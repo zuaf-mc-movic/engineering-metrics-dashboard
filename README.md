@@ -2,6 +2,10 @@
 
 A Python-based metrics collection and visualization tool for tracking team performance across GitHub and Jira using **GraphQL API** for efficient data collection.
 
+![Dashboard Screenshot](screenshot.png)
+
+*Multi-team dashboard showing GitHub metrics, Jira throughput, and team comparisons*
+
 ## Features
 
 - **GitHub Metrics Collection (GraphQL API)**:
