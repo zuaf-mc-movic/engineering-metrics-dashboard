@@ -361,6 +361,78 @@ class MetricsCalculator:
             'jira': jira_metrics
         }
 
+    def calculate_person_trends(self, github_data: Dict, period: str = 'weekly') -> Dict:
+        """Calculate time-series trends for person metrics
+
+        Args:
+            github_data: Raw GitHub data (PRs, reviews, commits)
+            period: Grouping period ('daily', 'weekly', 'monthly')
+
+        Returns:
+            Dictionary with trend data for charts
+        """
+        trends = {
+            'pr_trend': [],
+            'review_trend': [],
+            'commit_trend': [],
+            'lines_changed_trend': []
+        }
+
+        # PR trend
+        if github_data.get('pull_requests'):
+            prs_df = pd.DataFrame(github_data['pull_requests'])
+            if not prs_df.empty and 'created_at' in prs_df.columns:
+                prs_df['created_at'] = pd.to_datetime(prs_df['created_at'])
+                prs_df['period'] = prs_df['created_at'].dt.to_period(period[0].upper())
+                pr_counts = prs_df.groupby('period').size()
+                trends['pr_trend'] = [
+                    {'period': str(p), 'count': int(c)}
+                    for p, c in pr_counts.items()
+                ]
+
+        # Review trend
+        if github_data.get('reviews'):
+            reviews_df = pd.DataFrame(github_data['reviews'])
+            if not reviews_df.empty and 'submitted_at' in reviews_df.columns:
+                reviews_df['submitted_at'] = pd.to_datetime(reviews_df['submitted_at'])
+                reviews_df['period'] = reviews_df['submitted_at'].dt.to_period(period[0].upper())
+                review_counts = reviews_df.groupby('period').size()
+                trends['review_trend'] = [
+                    {'period': str(p), 'count': int(c)}
+                    for p, c in review_counts.items()
+                ]
+
+        # Commit trend
+        if github_data.get('commits'):
+            commits_df = pd.DataFrame(github_data['commits'])
+            # Check for both 'date' and 'committed_date' field names
+            date_field = 'date' if 'date' in commits_df.columns else 'committed_date'
+            if not commits_df.empty and date_field in commits_df.columns:
+                commits_df['commit_date'] = pd.to_datetime(commits_df[date_field], utc=True)
+                commits_df['period'] = commits_df['commit_date'].dt.to_period(period[0].upper())
+                commit_counts = commits_df.groupby('period').size()
+                trends['commit_trend'] = [
+                    {'period': str(p), 'count': int(c)}
+                    for p, c in commit_counts.items()
+                ]
+
+                # Lines changed trend
+                if 'additions' in commits_df.columns and 'deletions' in commits_df.columns:
+                    lines_agg = commits_df.groupby('period').agg({
+                        'additions': 'sum',
+                        'deletions': 'sum'
+                    })
+                    trends['lines_changed_trend'] = [
+                        {
+                            'period': str(p),
+                            'additions': int(row['additions']),
+                            'deletions': int(row['deletions'])
+                        }
+                        for p, row in lines_agg.iterrows()
+                    ]
+
+        return trends
+
     def calculate_time_period_comparison(self, person_metrics_list: List[Dict]) -> Dict:
         """Compare metrics across multiple time periods
 

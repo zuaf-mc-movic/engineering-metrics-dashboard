@@ -32,7 +32,10 @@ A Python-based metrics collection and visualization tool for tracking team perfo
 - **Web Dashboard**: Interactive Flask-based visualization
   - Main overview dashboard with 2-column team layout
   - Individual team dashboards with Jira metrics
-  - Person dashboards (contributor-level metrics)
+  - Person dashboards with date filtering and trend visualizations
+    - Flexible date ranges (30d, 90d, 180d, 365d, quarterly)
+    - 4 interactive trend charts (PRs, reviews, commits, code changes)
+    - 365-day rolling window for person metrics
   - Team comparison dashboard with side-by-side charts
   - Dark mode support across all views
   - Responsive chart layouts with optimal sizing
@@ -252,7 +255,11 @@ The system uses GitHub's GraphQL API v4 for data collection:
 ### Dashboard Views
 1. **Main Dashboard** - Overview of all teams with 2-column grid layout
 2. **Team Dashboard** - Team-specific metrics with Jira filters and WIP charts
-3. **Person Dashboard** - Individual contributor metrics (365-day rolling window)
+3. **Person Dashboard** - Individual contributor metrics with:
+   - Date range selector (30d, 90d, 180d, 365d, quarters)
+   - Interactive trend charts showing activity over time
+   - 365-day rolling window (filterable to any period)
+   - Weekly aggregated trends for visualization
 4. **Comparison Dashboard** - Side-by-side team comparison with centered bar charts
 
 ### UI Features

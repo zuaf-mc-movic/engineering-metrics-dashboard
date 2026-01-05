@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Collect metrics data and save to cache file"""
 
+import argparse
 import pickle
 from datetime import datetime, timezone, timedelta
 from src.config import Config
@@ -8,13 +9,40 @@ from src.collectors.github_collector import GitHubCollector
 from src.collectors.github_graphql_collector import GitHubGraphQLCollector
 from src.collectors.jira_collector import JiraCollector
 from src.models.metrics import MetricsCalculator
-from src.utils.time_periods import get_last_n_days, get_current_year
+from src.utils.time_periods import get_last_n_days, get_current_year, parse_period_to_dates, format_period_label
 import pandas as pd
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description='Collect team metrics data')
+parser.add_argument('--period', default='90d', help='Time period (e.g., 90d, Q1-2025, H1-2026)')
+parser.add_argument('--start-date', help='Start date (YYYY-MM-DD) - overrides period')
+parser.add_argument('--end-date', help='End date (YYYY-MM-DD) - overrides period')
+args = parser.parse_args()
 
 print("=" * 70)
 print("Team Metrics Data Collection")
 print("=" * 70)
 print()
+
+# Determine date range
+if args.start_date and args.end_date:
+    # Use explicit dates
+    start_date = datetime.fromisoformat(args.start_date).replace(tzinfo=timezone.utc)
+    end_date = datetime.fromisoformat(args.end_date).replace(tzinfo=timezone.utc)
+    period_label = f"{args.start_date} to {args.end_date}"
+    print(f"📅 Using custom date range: {period_label}")
+else:
+    # Use period
+    start_date, end_date = parse_period_to_dates(args.period)
+    period_label = format_period_label(args.period)
+    print(f"📅 Using period: {period_label}")
+
+print(f"   From: {start_date.strftime('%Y-%m-%d')}")
+print(f"   To:   {end_date.strftime('%Y-%m-%d')}")
+print()
+
+# Calculate days_back from date range
+days_back = (end_date - start_date).days
 
 config = Config()
 
@@ -32,7 +60,7 @@ if not teams:
         organization=config.github_organization,
         teams=config.github_teams,
         team_members=config.github_team_members,
-        days_back=config.days_back
+        days_back=days_back
     )
 
     dataframes = github_collector.get_dataframes()
@@ -54,7 +82,7 @@ if not teams:
                 api_token=jira_config['api_token'],
                 project_keys=jira_config['project_keys'],
                 team_members=config.jira_team_members,
-                days_back=config.days_back,
+                days_back=days_back,
                 verify_ssl=False
             )
 
@@ -107,7 +135,7 @@ else:
                 username=jira_config['username'],
                 api_token=jira_config['api_token'],
                 project_keys=jira_config.get('project_keys', []),
-                days_back=config.days_back,
+                days_back=days_back,
                 verify_ssl=False
             )
             print("✅ Connected to Jira")
@@ -147,7 +175,7 @@ else:
             organization=config.github_organization,
             teams=[team.get('github', {}).get('team_slug')] if team.get('github', {}).get('team_slug') else [],
             team_members=github_members,
-            days_back=config.days_back
+            days_back=days_back
         )
 
         team_github_data = github_collector.collect_all_metrics()
@@ -238,6 +266,9 @@ else:
                 start_date=start_date,
                 end_date=end_date
             )
+
+            # Store raw data for on-demand filtering
+            person_metrics[username]['raw_github_data'] = person_github_data
 
             print(f"✅")
         except Exception as e:

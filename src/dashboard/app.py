@@ -53,6 +53,50 @@ def get_config():
     """Load configuration"""
     return Config()
 
+def filter_github_data_by_date(raw_data, start_date, end_date):
+    """Filter GitHub raw data by date range"""
+    filtered = {}
+
+    # Filter PRs
+    if 'pull_requests' in raw_data and raw_data['pull_requests']:
+        prs_df = pd.DataFrame(raw_data['pull_requests'])
+        if 'created_at' in prs_df.columns:
+            prs_df['created_at'] = pd.to_datetime(prs_df['created_at'])
+            mask = (prs_df['created_at'] >= start_date) & (prs_df['created_at'] <= end_date)
+            filtered['pull_requests'] = prs_df[mask].to_dict('records')
+        else:
+            filtered['pull_requests'] = raw_data['pull_requests']
+    else:
+        filtered['pull_requests'] = []
+
+    # Filter reviews
+    if 'reviews' in raw_data and raw_data['reviews']:
+        reviews_df = pd.DataFrame(raw_data['reviews'])
+        if 'submitted_at' in reviews_df.columns:
+            reviews_df['submitted_at'] = pd.to_datetime(reviews_df['submitted_at'])
+            mask = (reviews_df['submitted_at'] >= start_date) & (reviews_df['submitted_at'] <= end_date)
+            filtered['reviews'] = reviews_df[mask].to_dict('records')
+        else:
+            filtered['reviews'] = raw_data['reviews']
+    else:
+        filtered['reviews'] = []
+
+    # Filter commits
+    if 'commits' in raw_data and raw_data['commits']:
+        commits_df = pd.DataFrame(raw_data['commits'])
+        # Check for both 'date' and 'committed_date' field names
+        date_field = 'date' if 'date' in commits_df.columns else 'committed_date'
+        if date_field in commits_df.columns:
+            commits_df['commit_date'] = pd.to_datetime(commits_df[date_field], utc=True)
+            mask = (commits_df['commit_date'] >= start_date) & (commits_df['commit_date'] <= end_date)
+            filtered['commits'] = commits_df[mask].to_dict('records')
+        else:
+            filtered['commits'] = raw_data['commits']
+    else:
+        filtered['commits'] = []
+
+    return filtered
+
 def should_refresh_cache(cache_duration_minutes=60):
     """Check if cache should be refreshed"""
     if metrics_cache['timestamp'] is None:
@@ -238,6 +282,40 @@ def api_refresh():
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
+@app.route('/api/collect/<period>')
+def api_collect_period(period):
+    """
+    Trigger metrics collection for a specific time period.
+
+    This is a simplified implementation that returns a message about running
+    the collection script manually with the specified period.
+
+    For full implementation, run: python collect_data.py --period <period>
+    """
+    from src.utils.time_periods import parse_period_to_dates, format_period_label
+
+    try:
+        # Validate the period format
+        start_date, end_date = parse_period_to_dates(period)
+        label = format_period_label(period)
+
+        # Return instructions for manual collection
+        return jsonify({
+            'status': 'info',
+            'message': 'Period-based collection requires running the collection script',
+            'period': period,
+            'label': label,
+            'start_date': start_date.isoformat(),
+            'end_date': end_date.isoformat(),
+            'command': f'python collect_data.py --period {period}',
+            'note': 'This will take 15-30 minutes to complete. Run the command in your terminal.'
+        })
+
+    except ValueError as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
 @app.route('/collect')
 def collect():
     """Trigger collection and redirect to dashboard"""
@@ -275,6 +353,8 @@ def team_dashboard(team_name):
                              config=config,
                              days_back=config.days_back,
                              jira_server=config.jira_config.get('server', 'https://jira.ops.expertcity.com'),
+                             github_org=config.github_organization,
+                             github_base_url=config.github_base_url,
                              updated_at=metrics_cache['timestamp'])
     else:
         # Legacy structure - show error
@@ -283,7 +363,7 @@ def team_dashboard(team_name):
 
 @app.route('/person/<username>')
 def person_dashboard(username):
-    """Person-specific dashboard"""
+    """Person-specific dashboard with date filtering and trends"""
     config = get_config()
 
     if metrics_cache['data'] is None:
@@ -295,13 +375,56 @@ def person_dashboard(username):
         return render_template('error.html',
                              error="Person dashboards require team configuration. Please update config.yaml and re-run data collection.")
 
-    person_data = cache['persons'].get(username)
-
-    if not person_data:
+    # Get full person data (365 days)
+    full_person_data = cache['persons'].get(username)
+    if not full_person_data:
         return render_template('error.html', error=f"No metrics found for user '{username}'")
 
-    # Get period parameter
-    period = request.args.get('period', '90d')
+    # Check if raw data exists (new format) or use cached metrics (old format)
+    if 'raw_github_data' in full_person_data:
+        # New format: Filter raw data by period
+        period = request.args.get('period', '90d')
+
+        from src.utils.time_periods import parse_period_to_dates
+        start_date, end_date = parse_period_to_dates(period)
+
+        # Filter raw GitHub data by date
+        filtered_github_data = filter_github_data_by_date(
+            full_person_data.get('raw_github_data', {}),
+            start_date,
+            end_date
+        )
+
+        # Recalculate metrics for filtered period
+        person_dfs = {
+            'pull_requests': pd.DataFrame(filtered_github_data['pull_requests']),
+            'reviews': pd.DataFrame(filtered_github_data['reviews']),
+            'commits': pd.DataFrame(filtered_github_data['commits'])
+        }
+
+        calculator = MetricsCalculator(person_dfs)
+        person_data = calculator.calculate_person_metrics(
+            username=username,
+            github_data=filtered_github_data,
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        # Calculate trends for charts
+        person_data['trends'] = calculator.calculate_person_trends(
+            filtered_github_data,
+            period='weekly'
+        )
+    else:
+        # Old format: Use cached metrics (no filtering available)
+        person_data = full_person_data
+        period = '365d'  # Default to full year for old data
+        person_data['trends'] = {
+            'pr_trend': [],
+            'review_trend': [],
+            'commit_trend': [],
+            'lines_changed_trend': []
+        }
 
     # Find which team this person belongs to
     team_name = None
@@ -316,6 +439,54 @@ def person_dashboard(username):
                          team_name=team_name,
                          period=period,
                          available_periods=config.time_periods.get('last_n_days', []),
+                         github_org=config.github_organization,
+                         github_base_url=config.github_base_url,
+                         updated_at=metrics_cache['timestamp'])
+
+@app.route('/team/<team_name>/compare')
+def team_members_comparison(team_name):
+    """Compare all team members side-by-side"""
+    config = get_config()
+
+    if metrics_cache['data'] is None:
+        return render_template('loading.html')
+
+    cache = metrics_cache['data']
+    team_data = cache.get('teams', {}).get(team_name)
+    team_config = config.get_team_by_name(team_name)
+
+    if not team_data:
+        return render_template('error.html', error=f"Team '{team_name}' not found")
+
+    if not team_config:
+        return render_template('error.html', error=f"Team configuration for '{team_name}' not found")
+
+    # Get all members from team config
+    members = team_config.get('github', {}).get('members', [])
+
+    # Build comparison data
+    comparison_data = []
+    for username in members:
+        person_data = cache.get('persons', {}).get(username, {})
+        github_data = person_data.get('github', {})
+
+        comparison_data.append({
+            'username': username,
+            'prs': github_data.get('prs_created', 0),
+            'prs_merged': github_data.get('prs_merged', 0),
+            'merge_rate': github_data.get('merge_rate', 0) * 100,
+            'reviews': github_data.get('reviews_given', 0),
+            'commits': github_data.get('commits', 0),
+            'lines_added': github_data.get('lines_added', 0),
+            'lines_deleted': github_data.get('lines_deleted', 0),
+            'cycle_time': github_data.get('avg_pr_cycle_time', 0)
+        })
+
+    return render_template('team_members_comparison.html',
+                         team_name=team_name,
+                         team_display_name=team_config.get('display_name', team_name),
+                         comparison_data=comparison_data,
+                         github_org=config.github_organization,
                          updated_at=metrics_cache['timestamp'])
 
 @app.route('/comparison')

@@ -4,45 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Error - Team Metrics Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f7fa;
             padding: 50px;
             text-align: center;
         }
         .error-container {
-            background: white;
+            background: var(--bg-secondary);
             padding: 40px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px var(--shadow);
             max-width: 600px;
             margin: 0 auto;
         }
         h1 {
-            color: #e74c3c;
+            color: var(--danger);
             margin-bottom: 20px;
         }
         .error-message {
-            color: #7f8c8d;
+            color: var(--text-secondary);
             margin-bottom: 30px;
         }
         .instructions {
             text-align: left;
-            background: #ecf0f1;
+            background: var(--bg-tertiary);
             padding: 20px;
             border-radius: 5px;
             margin-top: 20px;
         }
+        .instructions h3 {
+            color: var(--text-primary);
+        }
         code {
-            background: #34495e;
-            color: #ecf0f1;
+            background: var(--text-heading);
+            color: var(--bg-secondary);
             padding: 2px 6px;
             border-radius: 3px;
         }
     </style>
 </head>
 <body>
+    <button onclick="toggleTheme()" class="theme-toggle">🌙 Dark Mode</button>
     <div class="error-container">
         <h1>Configuration Error</h1>
         <p class="error-message">{{ error }}</p>

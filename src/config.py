@@ -34,6 +34,10 @@ class Config:
         return self.config.get('github', {}).get('organization')
 
     @property
+    def github_base_url(self):
+        return f"https://github.com/{self.github_organization}"
+
+    @property
     def github_teams(self):
         return self.config.get('github', {}).get('teams', [])
 

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ team_display_name }} - Member Comparison</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
+    <style>
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .comparison-table th {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .comparison-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .comparison-table tbody tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .username-cell {
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        .username-cell a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        .username-cell a:hover {
+            text-decoration: underline;
+        }
+
+        .best-value {
+            background: var(--success);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-table {
+                font-size: 14px;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button onclick="toggleTheme()" class="theme-toggle">🌙 Dark Mode</button>
+    <div class="container">
+        <header>
+            <h1>{{ team_display_name }} - Member Comparison</h1>
+            <p class="subtitle">Last updated: {{ updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+            <p class="subtitle" style="margin-top: 8px;">
+                📊 Comparing {{ comparison_data|length }} team members (Last 365 days)
+            </p>
+            <div class="nav">
+                <a href="/">← Home</a>
+                <a href="/team/{{ team_name }}">{{ team_display_name }}</a>
+                <a href="/comparison">Team Comparison</a>
+            </div>
+        </header>
+
+        <div class="card">
+            <h2>Team Member Metrics Comparison</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>PRs Created</th>
+                        <th>Merge Rate</th>
+                        <th>Reviews Given</th>
+                        <th>Commits</th>
+                        <th>Lines Added</th>
+                        <th>Lines Deleted</th>
+                        <th>Avg Cycle Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in comparison_data %}
+                    <tr>
+                        <td class="username-cell">
+                            <a href="/person/{{ member.username }}">{{ member.username }}</a>
+                        </td>
+                        <td>
+                            {% if member.prs == comparison_data|map(attribute='prs')|max %}
+                            <span class="best-value">{{ member.prs }}</span>
+                            {% else %}
+                            {{ member.prs }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if member.merge_rate == comparison_data|map(attribute='merge_rate')|max %}
+                            <span class="best-value">{{ "%.0f"|format(member.merge_rate) }}%</span>
+                            {% else %}
+                            {{ "%.0f"|format(member.merge_rate) }}%
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if member.reviews == comparison_data|map(attribute='reviews')|max %}
+                            <span class="best-value">{{ member.reviews }}</span>
+                            {% else %}
+                            {{ member.reviews }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if member.commits == comparison_data|map(attribute='commits')|max %}
+                            <span class="best-value">{{ member.commits }}</span>
+                            {% else %}
+                            {{ member.commits }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if member.lines_added == comparison_data|map(attribute='lines_added')|max %}
+                            <span class="best-value">+{{ member.lines_added }}</span>
+                            {% else %}
+                            +{{ member.lines_added }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if member.lines_deleted == comparison_data|map(attribute='lines_deleted')|max %}
+                            <span class="best-value">-{{ member.lines_deleted }}</span>
+                            {% else %}
+                            -{{ member.lines_deleted }}
+                            {% endif %}
+                        </td>
+                        <td>{{ "%.1f"|format(member.cycle_time) }}h</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 style="margin: 40px 0 20px 0; font-size: 24px;">Visual Comparison</h2>
+        <div class="charts-grid">
+            <div class="card">
+                <h2>Pull Requests Created</h2>
+                <div id="prs-chart"></div>
+            </div>
+
+            <div class="card">
+                <h2>Code Reviews Given</h2>
+                <div id="reviews-chart"></div>
+            </div>
+
+            <div class="card">
+                <h2>Commits</h2>
+                <div id="commits-chart"></div>
+            </div>
+
+            <div class="card">
+                <h2>Lines Changed</h2>
+                <div id="lines-chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get theme-aware colors
+        function getChartColors() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                paper_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
+                plot_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
+                font_color: isDark ? '#e0e0e0' : '#2c3e50',
+                grid_color: isDark ? '#444' : '#ecf0f1'
+            };
+        }
+
+        // PRs Created Chart
+        var prsData = [{
+            x: [{% for m in comparison_data %}'{{ m.username }}',{% endfor %}],
+            y: [{% for m in comparison_data %}{{ m.prs }},{% endfor %}],
+            type: 'bar',
+            marker: {
+                color: '#3498db',
+                line: {
+                    color: '#2980b9',
+                    width: 1.5
+                }
+            }
+        }];
+
+        var colors = getChartColors();
+        var prsLayout = {
+            yaxis: {title: 'Number of PRs', gridcolor: colors.grid_color, color: colors.font_color},
+            xaxis: {color: colors.font_color},
+            paper_bgcolor: colors.paper_bgcolor,
+            plot_bgcolor: colors.plot_bgcolor,
+            font: {color: colors.font_color},
+            margin: {l: 60, r: 40, t: 20, b: 80}
+        };
+        Plotly.newPlot('prs-chart', prsData, prsLayout, {responsive: true});
+
+        // Reviews Chart
+        var reviewsData = [{
+            x: [{% for m in comparison_data %}'{{ m.username }}',{% endfor %}],
+            y: [{% for m in comparison_data %}{{ m.reviews }},{% endfor %}],
+            type: 'bar',
+            marker: {
+                color: '#9b59b6',
+                line: {
+                    color: '#8e44ad',
+                    width: 1.5
+                }
+            }
+        }];
+
+        var reviewsLayout = {
+            yaxis: {title: 'Number of Reviews', gridcolor: colors.grid_color, color: colors.font_color},
+            xaxis: {color: colors.font_color},
+            paper_bgcolor: colors.paper_bgcolor,
+            plot_bgcolor: colors.plot_bgcolor,
+            font: {color: colors.font_color},
+            margin: {l: 60, r: 40, t: 20, b: 80}
+        };
+        Plotly.newPlot('reviews-chart', reviewsData, reviewsLayout, {responsive: true});
+
+        // Commits Chart
+        var commitsData = [{
+            x: [{% for m in comparison_data %}'{{ m.username }}',{% endfor %}],
+            y: [{% for m in comparison_data %}{{ m.commits }},{% endfor %}],
+            type: 'bar',
+            marker: {
+                color: '#27ae60',
+                line: {
+                    color: '#229954',
+                    width: 1.5
+                }
+            }
+        }];
+
+        var commitsLayout = {
+            yaxis: {title: 'Number of Commits', gridcolor: colors.grid_color, color: colors.font_color},
+            xaxis: {color: colors.font_color},
+            paper_bgcolor: colors.paper_bgcolor,
+            plot_bgcolor: colors.plot_bgcolor,
+            font: {color: colors.font_color},
+            margin: {l: 60, r: 40, t: 20, b: 80}
+        };
+        Plotly.newPlot('commits-chart', commitsData, commitsLayout, {responsive: true});
+
+        // Lines Changed Chart (Stacked)
+        var linesAddedData = {
+            x: [{% for m in comparison_data %}'{{ m.username }}',{% endfor %}],
+            y: [{% for m in comparison_data %}{{ m.lines_added }},{% endfor %}],
+            name: 'Lines Added',
+            type: 'bar',
+            marker: {color: '#27ae60'}
+        };
+
+        var linesDeletedData = {
+            x: [{% for m in comparison_data %}'{{ m.username }}',{% endfor %}],
+            y: [{% for m in comparison_data %}{{ m.lines_deleted }},{% endfor %}],
+            name: 'Lines Deleted',
+            type: 'bar',
+            marker: {color: '#e74c3c'}
+        };
+
+        var linesLayout = {
+            yaxis: {title: 'Lines of Code', gridcolor: colors.grid_color, color: colors.font_color},
+            xaxis: {color: colors.font_color},
+            barmode: 'group',
+            paper_bgcolor: colors.paper_bgcolor,
+            plot_bgcolor: colors.plot_bgcolor,
+            font: {color: colors.font_color},
+            legend: {
+                x: 0.5,
+                xanchor: 'center',
+                y: 1.1,
+                yanchor: 'bottom',
+                orientation: 'h'
+            },
+            margin: {l: 60, r: 40, t: 60, b: 80}
+        };
+        Plotly.newPlot('lines-chart', [linesAddedData, linesDeletedData], linesLayout, {responsive: true});
+    </script>
+</body>
+</html>
