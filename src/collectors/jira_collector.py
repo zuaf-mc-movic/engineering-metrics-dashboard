@@ -2,6 +2,10 @@ from jira import JIRA
 from datetime import datetime, timedelta
 import pandas as pd
 from typing import List, Dict, Any
+import urllib3
+
+# Disable SSL warnings for self-signed certificates
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class JiraCollector:
