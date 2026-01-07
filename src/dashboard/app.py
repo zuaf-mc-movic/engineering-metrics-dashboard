@@ -97,6 +97,50 @@ def filter_github_data_by_date(raw_data, start_date, end_date):
 
     return filtered
 
+def filter_jira_data_by_date(issues, start_date, end_date):
+    """Filter Jira issues by date range
+
+    Args:
+        issues: List of Jira issue dictionaries
+        start_date: Start date for filtering
+        end_date: End date for filtering
+
+    Returns:
+        List of filtered issue dictionaries
+    """
+    if not issues:
+        return []
+
+    issues_df = pd.DataFrame(issues)
+
+    # Convert date fields to datetime
+    if 'created' in issues_df.columns:
+        issues_df['created'] = pd.to_datetime(issues_df['created'], utc=True)
+    if 'resolved' in issues_df.columns:
+        issues_df['resolved'] = pd.to_datetime(issues_df['resolved'], utc=True)
+    if 'updated' in issues_df.columns:
+        issues_df['updated'] = pd.to_datetime(issues_df['updated'], utc=True)
+
+    # Include issue if ANY of these conditions are true:
+    # - Created in period
+    # - Resolved in period
+    # - Updated in period (for WIP items)
+    mask = pd.Series([False] * len(issues_df))
+
+    if 'created' in issues_df.columns:
+        created_mask = (issues_df['created'] >= start_date) & (issues_df['created'] <= end_date)
+        mask |= created_mask
+
+    if 'resolved' in issues_df.columns:
+        resolved_mask = issues_df['resolved'].notna() & (issues_df['resolved'] >= start_date) & (issues_df['resolved'] <= end_date)
+        mask |= resolved_mask
+
+    if 'updated' in issues_df.columns:
+        updated_mask = (issues_df['updated'] >= start_date) & (issues_df['updated'] <= end_date)
+        mask |= updated_mask
+
+    return issues_df[mask].to_dict('records')
+
 def should_refresh_cache(cache_duration_minutes=60):
     """Check if cache should be refreshed"""
     if metrics_cache['timestamp'] is None:
@@ -399,6 +443,13 @@ def person_dashboard(username):
             end_date
         )
 
+        # Filter raw Jira data by date (if it exists)
+        filtered_jira_data = filter_jira_data_by_date(
+            full_person_data.get('raw_jira_data', []),
+            start_date,
+            end_date
+        )
+
         # Recalculate metrics for filtered period
         person_dfs = {
             'pull_requests': pd.DataFrame(filtered_github_data['pull_requests']),
@@ -410,6 +461,7 @@ def person_dashboard(username):
         person_data = calculator.calculate_person_metrics(
             username=username,
             github_data=filtered_github_data,
+            jira_data=filtered_jira_data,  # ← Now passing filtered Jira data!
             start_date=start_date,
             end_date=end_date
         )

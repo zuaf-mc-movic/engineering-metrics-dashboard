@@ -159,6 +159,78 @@ class JiraCollector:
 
         return worklogs
 
+    def collect_person_issues(self, jira_username: str, days_back: int = 365) -> List[Dict]:
+        """Collect all Jira issues for a specific person.
+
+        Args:
+            jira_username: Jira username (assignee)
+            days_back: Number of days to look back (default: 365)
+
+        Returns:
+            List of issue dictionaries with all fields
+        """
+        issues = []
+
+        try:
+            # Build JQL to find all issues assigned to this person
+            # Use created/resolved/updated to capture:
+            # - New issues created recently
+            # - Old issues resolved recently
+            # - Issues still in progress
+            jql = f'assignee = "{jira_username}" AND (created >= -{days_back}d OR resolved >= -{days_back}d OR updated >= -{days_back}d) ORDER BY updated DESC'
+
+            print(f"  Querying Jira for {jira_username}: {jql}")
+
+            # Execute query with changelog for status transitions
+            jira_issues = self.jira.search_issues(jql, maxResults=1000, expand='changelog')
+
+            for issue in jira_issues:
+                issue_data = {
+                    'key': issue.key,
+                    'project': issue.fields.project.key,
+                    'type': issue.fields.issuetype.name,
+                    'status': issue.fields.status.name,
+                    'priority': issue.fields.priority.name if issue.fields.priority else None,
+                    'assignee': issue.fields.assignee.name if issue.fields.assignee else None,
+                    'reporter': issue.fields.reporter.name if issue.fields.reporter else None,
+                    'created': issue.fields.created,
+                    'updated': issue.fields.updated,
+                    'resolved': issue.fields.resolutiondate,
+                    'summary': issue.fields.summary,
+                    'story_points': getattr(issue.fields, 'customfield_10016', None),
+                    'labels': issue.fields.labels if hasattr(issue.fields, 'labels') else [],
+                    'flagged': any('blocked' in label.lower() or 'impediment' in label.lower()
+                                  for label in getattr(issue.fields, 'labels', []))
+                }
+
+                # Calculate cycle time (created to resolved)
+                if issue.fields.resolutiondate:
+                    created = datetime.strptime(issue.fields.created, '%Y-%m-%dT%H:%M:%S.%f%z')
+                    resolved = datetime.strptime(issue.fields.resolutiondate, '%Y-%m-%dT%H:%M:%S.%f%z')
+                    issue_data['cycle_time_hours'] = (resolved - created).total_seconds() / 3600
+                else:
+                    issue_data['cycle_time_hours'] = None
+
+                # Calculate time in current status (for WIP items)
+                if issue.fields.resolutiondate is None:
+                    updated = datetime.strptime(issue.fields.updated, '%Y-%m-%dT%H:%M:%S.%f%z')
+                    now = datetime.now(updated.tzinfo)
+                    issue_data['days_in_current_status'] = (now - updated).days
+                else:
+                    issue_data['days_in_current_status'] = None
+
+                # Get time in each status from changelog
+                status_times = self._calculate_status_times(issue)
+                issue_data.update(status_times)
+
+                issues.append(issue_data)
+
+        except Exception as e:
+            print(f"  Error collecting issues for {jira_username}: {e}")
+            raise  # Re-raise so caller can handle
+
+        return issues
+
     def collect_filter_issues(self, filter_id: int, add_time_constraint: bool = False):
         """Execute filter by ID and return issues
 

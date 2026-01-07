@@ -35,6 +35,18 @@ jira:
     - "PROJ"
 
 # Team configurations
+#
+# Member Format Options:
+# ----------------------
+# Option 1 (Old format): Separate github.members and jira.members lists
+#   - Members are matched by index (first GitHub member = first Jira member)
+#   - Shown below for the Native team
+#
+# Option 2 (New format): Explicit member mapping with github/jira keys
+#   - More explicit, safer when GitHub and Jira usernames differ
+#   - Shown below for the WebTC team
+#   - Enables per-person Jira metrics on person dashboard
+#
 teams:
   - name: "Native"
     display_name: "Native Team"
@@ -51,6 +63,7 @@ teams:
         - "psari-goto"
         - "norbert-toth-goto"
     jira:
+      # NOTE: Order must match github.members for proper mapping
       members:
         - "dbarsony"
         - "aborsanyihortobagyi"
@@ -75,21 +88,21 @@ teams:
 
   - name: "WebTC"
     display_name: "WebTC Team"
+    # New format: Explicit GitHub/Jira mapping (recommended)
+    members:
+      - github: "icsiza"
+        jira: "icsiza"
+      - github: "teklavass"
+        jira: "tvass"
+      - github: "rgolle"
+        jira: "rgolle"
+      - github: "KrisztianSzabados"
+        jira: "kszabados"
+      - github: "bkissbarnabas"
+        jira: "bkiss"
     github:
       team_slug: "itsg-rescue-webtc"
-      members:
-        - "icsiza"
-        - "teklavass"
-        - "rgolle"
-        - "KrisztianSzabados"
-        - "bkissbarnabas"
     jira:
-      members:
-        - "icsiza"
-        - "tvass"
-        - "rgolle"
-        - "kszabados"
-        - "bkiss"
       # Filter IDs - run list_jira_filters.py to discover these
       filters:
         backlog_in_progress: 22345  # Replace with actual filter ID

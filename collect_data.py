@@ -4,6 +4,7 @@
 import argparse
 import pickle
 from datetime import datetime, timezone, timedelta
+from typing import Dict, List, Optional
 from src.config import Config
 from src.collectors.github_collector import GitHubCollector
 from src.collectors.github_graphql_collector import GitHubGraphQLCollector
@@ -11,6 +12,43 @@ from src.collectors.jira_collector import JiraCollector
 from src.models.metrics import MetricsCalculator
 from src.utils.time_periods import get_last_n_days, get_current_year, parse_period_to_dates, format_period_label
 import pandas as pd
+
+
+def map_github_to_jira_username(github_username: str, teams: List[Dict]) -> Optional[str]:
+    """
+    Map a GitHub username to corresponding Jira username.
+
+    Supports both config formats:
+    - New format: members list with github/jira mapping
+    - Old format: separate github.members and jira.members lists (matched by index)
+
+    Args:
+        github_username: GitHub username to look up
+        teams: List of team configurations
+
+    Returns:
+        Jira username or None if not found
+    """
+    for team in teams:
+        # Check for new format: members list with github/jira keys
+        if 'members' in team and isinstance(team['members'], list):
+            for member in team['members']:
+                if isinstance(member, dict):
+                    if member.get('github') == github_username:
+                        return member.get('jira')
+
+        # Fall back to old format: parallel lists
+        github_members = team.get('github', {}).get('members', [])
+        jira_members = team.get('jira', {}).get('members', [])
+
+        if github_username in github_members:
+            # Find index in GitHub members
+            idx = github_members.index(github_username)
+            # Return corresponding Jira member if it exists
+            if idx < len(jira_members):
+                return jira_members[idx]
+
+    return None
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Collect team metrics data')
@@ -228,7 +266,17 @@ else:
 
     all_members = set()
     for team in teams:
-        all_members.update(team.get('github', {}).get('members', []))
+        # Check for new format: members list with github/jira keys
+        if 'members' in team and isinstance(team.get('members'), list):
+            for member in team['members']:
+                if isinstance(member, dict) and 'github' in member:
+                    all_members.add(member['github'])
+                elif isinstance(member, str):
+                    # Old format where members is a simple list
+                    all_members.add(member)
+        # Fall back to old format: github.members
+        else:
+            all_members.update(team.get('github', {}).get('members', []))
 
     print(f"Collecting metrics for {len(all_members)} unique team members...")
     print(f"Time period: Last 365 days ({start_date.date()} to {end_date.date()})")
@@ -252,6 +300,23 @@ else:
                 end_date=end_date
             )
 
+            # Map GitHub username to Jira username
+            jira_username = map_github_to_jira_username(username, teams)
+
+            # Collect Jira data (if mapping exists and Jira is configured)
+            person_jira_data = []
+            if jira_username and jira_collector:
+                try:
+                    person_jira_data = jira_collector.collect_person_issues(
+                        jira_username=jira_username,
+                        days_back=365
+                    )
+                    print(f"GitHub: {len(person_github_data['pull_requests'])} PRs, {len(person_github_data['commits'])} commits | Jira: {len(person_jira_data)} issues")
+                except Exception as e:
+                    print(f"⚠️ Could not fetch Jira data for {jira_username}: {e}")
+            else:
+                print(f"GitHub: {len(person_github_data['pull_requests'])} PRs, {len(person_github_data['commits'])} commits | Jira: skipped (no mapping)")
+
             # Calculate person metrics
             person_dfs = {
                 'pull_requests': pd.DataFrame(person_github_data['pull_requests']),
@@ -263,12 +328,14 @@ else:
             person_metrics[username] = calculator_person.calculate_person_metrics(
                 username=username,
                 github_data=person_github_data,
+                jira_data=person_jira_data,  # ← Now passing Jira data!
                 start_date=start_date,
                 end_date=end_date
             )
 
             # Store raw data for on-demand filtering
             person_metrics[username]['raw_github_data'] = person_github_data
+            person_metrics[username]['raw_jira_data'] = person_jira_data  # ← Store for later filtering
 
             print(f"✅")
         except Exception as e:
