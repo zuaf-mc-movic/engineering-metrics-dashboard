@@ -378,13 +378,13 @@
         <div class="card" style="margin-top: 30px;">
             <h2>Activity Summary</h2>
             <p style="line-height: 1.6; color: var(--text-primary);">
-                <strong>{{ username }}</strong> has been actively contributing to the team during this period.
+                <strong>{{ username }}</strong> contributed to the team during this period.
                 {% if person_data.github.prs_created > 0 %}
                 Created <strong>{{ person_data.github.prs_created }}</strong> pull requests with a
                 <strong>{{ "%.0f"|format(person_data.github.merge_rate * 100) }}%</strong> merge rate.
                 {% endif %}
                 {% if person_data.github.reviews_given > 0 %}
-                Participated in code reviews, providing <strong>{{ person_data.github.reviews_given }}</strong> reviews across
+                Provided <strong>{{ person_data.github.reviews_given }}</strong> code reviews across
                 <strong>{{ person_data.github.prs_reviewed }}</strong> different pull requests.
                 {% endif %}
                 {% if person_data.github.commits > 0 %}
@@ -396,7 +396,7 @@
                 Completed <strong>{{ person_data.jira.completed }}</strong> Jira issues with an average cycle time of <strong>{{ "%.1f"|format(person_data.jira.avg_cycle_time) }}</strong> hours.
                 {% endif %}
                 {% if person_data.jira and person_data.jira.in_progress > 0 %}
-                Currently has <strong>{{ person_data.jira.in_progress }}</strong> issues in progress.
+                Had <strong>{{ person_data.jira.in_progress }}</strong> issues in progress during this period.
                 {% endif %}
             </p>
         </div>
