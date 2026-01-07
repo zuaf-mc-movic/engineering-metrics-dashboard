@@ -392,6 +392,19 @@ def team_dashboard(team_name):
         # Calculate date range for GitHub search links
         start_date = (datetime.now() - timedelta(days=config.days_back)).strftime('%Y-%m-%d')
 
+        # Add Jira data to member_trends from persons cache
+        if 'persons' in cache and 'github' in team_data and 'member_trends' in team_data['github']:
+            member_trends = team_data['github']['member_trends']
+            for member in member_trends:
+                if member in cache['persons']:
+                    person_data = cache['persons'][member]
+                    if 'jira' in person_data:
+                        member_trends[member]['jira'] = {
+                            'completed': person_data['jira'].get('completed', 0),
+                            'in_progress': person_data['jira'].get('in_progress', 0),
+                            'avg_cycle_time': person_data['jira'].get('avg_cycle_time', 0)
+                        }
+
         return render_template('team_dashboard.html',
                              team_name=team_name,
                              team_display_name=team_config.get('display_name', team_name) if team_config else team_name,

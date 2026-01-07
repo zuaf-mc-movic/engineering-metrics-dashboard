@@ -92,7 +92,10 @@
                     <div class="member-stats">
                         PRs: {{ stats.prs }} | Reviews: {{ stats.reviews }}<br>
                         Commits: {{ stats.commits }}<br>
-                        Lines: +{{ stats.lines_added }} -{{ stats.lines_deleted }}
+                        Lines: +{{ stats.lines_added }} -{{ stats.lines_deleted }}<br>
+                        {% if stats.jira %}
+                        Jira: {{ stats.jira.completed }} done | {{ stats.jira.in_progress }} WIP
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
