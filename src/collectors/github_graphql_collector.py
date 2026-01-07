@@ -199,8 +199,21 @@ class GitHubGraphQLCollector:
                 reviewRequests(first: 10) {
                   totalCount
                 }
-                commits(first: 100) {
+                commits(first: 250) {
                   totalCount
+                  nodes {
+                    commit {
+                      oid
+                      author {
+                        name
+                        email
+                        date
+                      }
+                      committedDate
+                      additions
+                      deletions
+                    }
+                  }
                 }
               }
               pageInfo {
@@ -298,6 +311,23 @@ class GitHubGraphQLCollector:
                                 'pr_author': pr_author
                             })
 
+                    # Extract commits from PR (use PR commits instead of default branch)
+                    for commit_node in pr["commits"]["nodes"]:
+                        commit = commit_node["commit"]
+                        if commit["author"]:
+                            commits_data.append({
+                                'repo': f"{owner}/{repo_name}",
+                                'sha': commit["oid"],
+                                'author': commit["author"]["name"],
+                                'email': commit["author"]["email"],
+                                'date': datetime.fromisoformat(commit["author"]["date"].replace('Z', '+00:00')) if commit["author"]["date"] else None,
+                                'committed_date': datetime.fromisoformat(commit["committedDate"].replace('Z', '+00:00')) if commit["committedDate"] else None,
+                                'additions': commit["additions"],
+                                'deletions': commit["deletions"],
+                                'pr_number': pr["number"],
+                                'pr_created_at': pr_created
+                            })
+
                 if not pr_data["pageInfo"]["hasNextPage"]:
                     break
 
@@ -308,13 +338,22 @@ class GitHubGraphQLCollector:
                 print(f"  Error in pagination: {e}")
                 break
 
-        # Collect commits separately (more efficient than per-PR)
-        commits_data = self._collect_commits_graphql(owner, repo_name)
+        # Deduplicate commits (same commit can be in multiple PRs)
+        seen_shas = set()
+        unique_commits = []
+        for commit in commits_data:
+            if commit['sha'] not in seen_shas:
+                seen_shas.add(commit['sha'])
+                unique_commits.append(commit)
+
+        # NOTE: We now collect commits from PRs instead of default branch
+        # This ensures PRs and commits use consistent date filtering (PR creation date)
+        # Old method: self._collect_commits_graphql(owner, repo_name) - used default branch
 
         return {
             'pull_requests': pull_requests,
             'reviews': reviews,
-            'commits': commits_data
+            'commits': unique_commits
         }
 
     def _collect_commits_graphql(self, owner: str, repo_name: str) -> List[Dict]:
