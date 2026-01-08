@@ -1,375 +1,365 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documentation - Team Metrics Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
-    <style>
-        .faq-section {
-            margin-bottom: 40px;
-        }
-        .faq-item {
-            margin-bottom: 30px;
-        }
-        .faq-question {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--accent-primary);
-            margin-bottom: 10px;
-        }
-        .faq-answer {
-            line-height: 1.6;
-            color: var(--text-primary);
-        }
-        .faq-answer code {
-            background: var(--bg-tertiary);
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-        }
-        .faq-answer ul {
-            margin: 10px 0;
-            padding-left: 30px;
-        }
-        .faq-answer ol {
-            margin: 10px 0;
-            padding-left: 30px;
-        }
-    </style>
-</head>
-<body>
-    <button onclick="toggleTheme()" class="theme-toggle">🌙 Dark Mode</button>
-    <div class="container">
-        <header>
-            <h1>📚 Documentation & FAQ</h1>
-            <div class="nav">
-                <a href="/">← Home</a>
-            </div>
-        </header>
+{% extends "content_page.html" %}
 
-        <!-- Data Collection Methods -->
-        <div class="card">
-            <h2>📊 Data Collection Methods</h2>
+{% block title %}Documentation{% endblock %}
+{% block page_title %}Documentation{% endblock %}
 
-            <div class="faq-section">
-                <h3>GitHub Metrics</h3>
+{% block header_title %}📚 Documentation & FAQ{% endblock %}
 
-                <div class="faq-item">
-                    <div class="faq-question">How are Pull Requests counted?</div>
-                    <div class="faq-answer">
-                        PRs are counted by creation date within the time window. Each PR created by a team member is counted once, regardless of merge status. Metrics include:
-                        <ul>
-                            <li><strong>Total PRs</strong>: All PRs created in the period</li>
-                            <li><strong>Merged PRs</strong>: PRs that were successfully merged</li>
-                            <li><strong>Merge Rate</strong>: (Merged PRs / Total PRs) × 100</li>
-                        </ul>
-                    </div>
-                </div>
+{% block extra_css %}
+<style>
+    .faq-section {
+        margin-bottom: 40px;
+    }
+    .faq-item {
+        margin-bottom: 30px;
+    }
+    .faq-question {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--accent-primary);
+        margin-bottom: 10px;
+    }
+    .faq-answer {
+        line-height: 1.6;
+        color: var(--text-primary);
+    }
+    .faq-answer code {
+        background: var(--bg-tertiary);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+    .faq-answer ul {
+        margin: 10px 0;
+        padding-left: 30px;
+    }
+    .faq-answer ol {
+        margin: 10px 0;
+        padding-left: 30px;
+    }
+</style>
+{% endblock %}
 
-                <div class="faq-item">
-                    <div class="faq-question">How are Commits counted?</div>
-                    <div class="faq-answer">
-                        Commits are extracted from Pull Requests, not from the default branch. This ensures consistency:
-                        <ul>
-                            <li>Only commits that are part of PRs are counted</li>
-                            <li>Commits are attributed by GitHub username (not Git author name)</li>
-                            <li>Each unique commit SHA is counted once (deduplicated if appearing in multiple PRs)</li>
-                            <li>Team members must have commits ≥ PRs (since 1 PR = at least 1 commit)</li>
-                        </ul>
-                    </div>
-                </div>
+{% block main_content %}
+<!-- Data Collection Methods -->
+<div class="card">
+    <h2>📊 Data Collection Methods</h2>
 
-                <div class="faq-item">
-                    <div class="faq-question">How are Code Reviews counted?</div>
-                    <div class="faq-answer">
-                        Reviews are counted when submitted within the time window. Each review submission (comment, approval, or request changes) is counted once per PR. Multiple reviews on the same PR by the same person count separately.
-                    </div>
-                </div>
+    <div class="faq-section">
+        <h3>GitHub Metrics</h3>
 
-                <div class="faq-item">
-                    <div class="faq-question">What is Cycle Time?</div>
-                    <div class="faq-answer">
-                        Cycle Time measures the duration from PR creation to merge/close. It's calculated as:
-                        <ul>
-                            <li><strong>For merged PRs</strong>: Time from PR creation to merge</li>
-                            <li><strong>For closed PRs</strong>: Time from PR creation to close</li>
-                            <li><strong>Average Cycle Time</strong>: Mean of all completed PRs in the period</li>
-                        </ul>
-                        Lower cycle times indicate faster code review and merge processes.
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">How are Lines of Code counted?</div>
-                    <div class="faq-answer">
-                        Lines Added and Lines Deleted are aggregated from all commits made by the person. These come from GitHub's diff statistics and include:
-                        <ul>
-                            <li>All code changes (additions, deletions, modifications)</li>
-                            <li>Configuration files, tests, and documentation</li>
-                            <li>Generated code and dependencies if committed</li>
-                        </ul>
-                        Note: High line counts don't always mean higher productivity - quality matters more than quantity.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-section">
-                <h3>Jira Metrics</h3>
-
-                <div class="faq-item">
-                    <div class="faq-question">How are Jira issues counted?</div>
-                    <div class="faq-answer">
-                        Jira issues are fetched using JQL queries with date filtering:
-                        <ul>
-                            <li><strong>Completed</strong>: Issues with resolution date within the 90-day window</li>
-                            <li><strong>In Progress</strong>: Issues currently unresolved (no resolution date)</li>
-                            <li>Issues must be assigned to the team member's Jira username</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">What is Throughput?</div>
-                    <div class="faq-answer">
-                        Throughput measures team velocity by counting issues completed per week over a 12-week period. It's calculated as:
-                        <ul>
-                            <li>Total issues completed in last 12 weeks ÷ 12 = Weekly Average</li>
-                            <li>Only counts issues with resolution dates in that period</li>
-                            <li>Higher throughput indicates faster delivery</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">What is WIP (Work In Progress)?</div>
-                    <div class="faq-answer">
-                        WIP counts currently active issues:
-                        <ul>
-                            <li><strong>WIP Count</strong>: Number of unresolved issues</li>
-                            <li><strong>Average WIP Age</strong>: How long items have been in progress</li>
-                            <li><strong>WIP by Status</strong>: Distribution across statuses (In Progress, Code Review, etc.)</li>
-                        </ul>
-                        Lower WIP counts and ages generally lead to faster completion.
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">What are Flagged/Blocked Issues?</div>
-                    <div class="faq-answer">
-                        Issues marked as blocked or flagged need attention:
-                        <ul>
-                            <li>Fetched using team-specific Jira filters</li>
-                            <li>Shows assignee and days blocked</li>
-                            <li>Removing blockers maintains team flow</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">How are Bugs tracked?</div>
-                    <div class="faq-answer">
-                        Bug metrics track product quality:
-                        <ul>
-                            <li><strong>Created</strong>: New bugs filed in the period</li>
-                            <li><strong>Resolved</strong>: Bugs fixed in the period</li>
-                            <li><strong>Net</strong>: Created - Resolved (negative is good)</li>
-                        </ul>
-                        Trend charts show 90-day history to identify patterns.
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">What is Jira Cycle Time?</div>
-                    <div class="faq-answer">
-                        Jira Cycle Time measures issue resolution speed:
-                        <ul>
-                            <li>Time from issue creation to resolution</li>
-                            <li>Calculated in hours, displayed in hours</li>
-                            <li>Average across all completed issues</li>
-                        </ul>
-                    </div>
-                </div>
+        <div class="faq-item">
+            <div class="faq-question">How are Pull Requests counted?</div>
+            <div class="faq-answer">
+                PRs are counted by creation date within the time window. Each PR created by a team member is counted once, regardless of merge status. Metrics include:
+                <ul>
+                    <li><strong>Total PRs</strong>: All PRs created in the period</li>
+                    <li><strong>Merged PRs</strong>: PRs that were successfully merged</li>
+                    <li><strong>Merge Rate</strong>: (Merged PRs / Total PRs) × 100</li>
+                </ul>
             </div>
         </div>
 
-        <!-- Time Windows -->
-        <div class="card">
-            <h2>⏰ Time Windows</h2>
-
-            <div class="faq-item">
-                <div class="faq-question">What time periods are used?</div>
-                <div class="faq-answer">
-                    Different dashboards use different time windows:
-                    <ul>
-                        <li><strong>Team Metrics</strong>: Last 90 days (configurable via <code>days_back</code> in config.yaml)</li>
-                        <li><strong>Person Metrics</strong>: Last 90 days by default (can be changed with period selector)</li>
-                        <li><strong>Jira Throughput</strong>: Last 12 weeks (84 days)</li>
-                        <li><strong>Jira Trends</strong>: Last 90 days for bugs/scope charts</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">How often is data refreshed?</div>
-                <div class="faq-answer">
-                    Data collection runs on a schedule:
-                    <ul>
-                        <li><strong>Automatic</strong>: Daily at 10:00 AM via launchd scheduler</li>
-                        <li><strong>Manual</strong>: Run <code>python collect_data.py</code></li>
-                        <li><strong>Duration</strong>: 15-30 minutes per collection</li>
-                        <li><strong>Cache</strong>: Stored in <code>data/metrics_cache.pkl</code></li>
-                    </ul>
-                    Dashboard shows cache timestamp at top of page.
-                </div>
+        <div class="faq-item">
+            <div class="faq-question">How are Commits counted?</div>
+            <div class="faq-answer">
+                Commits are extracted from Pull Requests, not from the default branch. This ensures consistency:
+                <ul>
+                    <li>Only commits that are part of PRs are counted</li>
+                    <li>Commits are attributed by GitHub username (not Git author name)</li>
+                    <li>Each unique commit SHA is counted once (deduplicated if appearing in multiple PRs)</li>
+                    <li>Team members must have commits ≥ PRs (since 1 PR = at least 1 commit)</li>
+                </ul>
             </div>
         </div>
 
-        <!-- API Information -->
-        <div class="card">
-            <h2>🔌 API Details</h2>
-
-            <div class="faq-item">
-                <div class="faq-question">Which GitHub API is used?</div>
-                <div class="faq-answer">
-                    We use <strong>GitHub GraphQL API v4</strong> for efficiency:
-                    <ul>
-                        <li>Separate rate limit (5000 points/hour)</li>
-                        <li>50-70% fewer API calls than REST</li>
-                        <li>Single query fetches PRs + reviews + commits</li>
-                    </ul>
-                    See <code>src/collectors/github_graphql_collector.py</code> for implementation.
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">How is Jira accessed?</div>
-                <div class="faq-answer">
-                    We use <strong>Jira REST API</strong> with Bearer token authentication:
-                    <ul>
-                        <li>Team-specific filter IDs configured per team</li>
-                        <li>JQL queries with date filtering</li>
-                        <li>SSL verification disabled for self-signed certificates</li>
-                    </ul>
-                    Use <code>python list_jira_filters.py</code> to discover filter IDs.
-                </div>
+        <div class="faq-item">
+            <div class="faq-question">How are Code Reviews counted?</div>
+            <div class="faq-answer">
+                Reviews are counted when submitted within the time window. Each review submission (comment, approval, or request changes) is counted once per PR. Multiple reviews on the same PR by the same person count separately.
             </div>
         </div>
 
-        <!-- Common Questions -->
-        <div class="card">
-            <h2>❓ Common Questions</h2>
-
-            <div class="faq-item">
-                <div class="faq-question">Why does someone show 0 commits but have PRs?</div>
-                <div class="faq-answer">
-                    This shouldn't happen after the commit counting fix, but possible causes:
-                    <ul>
-                        <li>Git author name doesn't match GitHub username</li>
-                        <li>Commits were made by someone else but PR opened by this person</li>
-                        <li>Data collection issue - try re-running collection</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">Why does someone show 0 Jira issues?</div>
-                <div class="faq-answer">
-                    Possible reasons:
-                    <ul>
-                        <li>No Jira username mapping in config.yaml</li>
-                        <li>No issues resolved in the last 90 days</li>
-                        <li>Jira username doesn't match configuration</li>
-                        <li>Issues assigned to different username/account</li>
-                    </ul>
-                    Check Jira username mapping in <code>config/config.yaml</code>.
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">How do I add a new team member?</div>
-                <div class="faq-answer">
-                    Update <code>config/config.yaml</code>:
-                    <ol>
-                        <li>Add GitHub username to <code>github.members</code> list</li>
-                        <li>Add Jira username to <code>jira.members</code> list</li>
-                        <li>Re-run data collection: <code>python collect_data.py</code></li>
-                        <li>Restart dashboard: <code>launchctl restart com.team-metrics.dashboard</code></li>
-                    </ol>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">Can I change the time window?</div>
-                <div class="faq-answer">
-                    Yes, for team metrics:
-                    <ul>
-                        <li>Edit <code>days_back</code> in <code>config/config.yaml</code></li>
-                        <li>Or use <code>--period</code> flag: <code>python collect_data.py --period 30d</code></li>
-                        <li>Or use <code>--start-date</code> and <code>--end-date</code> flags</li>
-                    </ul>
-                    Person metrics are fixed at 90 days (can be changed via period selector on person page).
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">What does "Merge Rate" mean?</div>
-                <div class="faq-answer">
-                    Merge Rate = (Merged PRs ÷ Total PRs) × 100%
-                    <ul>
-                        <li>100% = All PRs were merged</li>
-                        <li>&lt;100% = Some PRs were closed without merging</li>
-                        <li>Higher is generally better, but depends on team practices</li>
-                    </ul>
-                </div>
+        <div class="faq-item">
+            <div class="faq-question">What is Cycle Time?</div>
+            <div class="faq-answer">
+                Cycle Time measures the duration from PR creation to merge/close. It's calculated as:
+                <ul>
+                    <li><strong>For merged PRs</strong>: Time from PR creation to merge</li>
+                    <li><strong>For closed PRs</strong>: Time from PR creation to close</li>
+                    <li><strong>Average Cycle Time</strong>: Mean of all completed PRs in the period</li>
+                </ul>
+                Lower cycle times indicate faster code review and merge processes.
             </div>
         </div>
 
-        <!-- Technical Details -->
-        <div class="card">
-            <h2>⚙️ Technical Details</h2>
-
-            <div class="faq-item">
-                <div class="faq-question">Where is data stored?</div>
-                <div class="faq-answer">
-                    All collected data is cached locally:
-                    <ul>
-                        <li><code>data/metrics_cache.pkl</code> - Main metrics cache (pickle format)</li>
-                        <li><code>logs/collect_data.log</code> - Collection logs</li>
-                        <li><code>logs/dashboard.log</code> - Dashboard logs</li>
-                    </ul>
-                    Cache includes: teams, persons, comparison data, and timestamp.
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">How are metrics calculated?</div>
-                <div class="faq-answer">
-                    Calculation pipeline:
-                    <ol>
-                        <li>Raw data collected as lists of dicts</li>
-                        <li>Converted to pandas DataFrames</li>
-                        <li>Aggregated by <code>MetricsCalculator</code> in <code>src/models/metrics.py</code></li>
-                        <li>Cached to disk as pickle</li>
-                        <li>Loaded by Flask and passed to Jinja templates</li>
-                    </ol>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">What happens if collection fails?</div>
-                <div class="faq-answer">
-                    Dashboard continues using old cache until successful collection:
-                    <ul>
-                        <li>Check <code>logs/collect_data.log</code> for errors</li>
-                        <li>Verify API tokens in <code>config/config.yaml</code></li>
-                        <li>Check API rate limits (GitHub/Jira)</li>
-                        <li>Manually trigger: <code>python collect_data.py</code></li>
-                    </ul>
-                </div>
+        <div class="faq-item">
+            <div class="faq-question">How are Lines of Code counted?</div>
+            <div class="faq-answer">
+                Lines Added and Lines Deleted are aggregated from all commits made by the person. These come from GitHub's diff statistics and include:
+                <ul>
+                    <li>All code changes (additions, deletions, modifications)</li>
+                    <li>Configuration files, tests, and documentation</li>
+                    <li>Generated code and dependencies if committed</li>
+                </ul>
+                Note: High line counts don't always mean higher productivity - quality matters more than quantity.
             </div>
         </div>
     </div>
-</body>
-</html>
+
+    <div class="faq-section">
+        <h3>Jira Metrics</h3>
+
+        <div class="faq-item">
+            <div class="faq-question">How are Jira issues counted?</div>
+            <div class="faq-answer">
+                Jira issues are fetched using JQL queries with date filtering:
+                <ul>
+                    <li><strong>Completed</strong>: Issues with resolution date within the 90-day window</li>
+                    <li><strong>In Progress</strong>: Issues currently unresolved (no resolution date)</li>
+                    <li>Issues must be assigned to the team member's Jira username</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">What is Throughput?</div>
+            <div class="faq-answer">
+                Throughput measures team velocity by counting issues completed per week over a 12-week period. It's calculated as:
+                <ul>
+                    <li>Total issues completed in last 12 weeks ÷ 12 = Weekly Average</li>
+                    <li>Only counts issues with resolution dates in that period</li>
+                    <li>Higher throughput indicates faster delivery</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">What is WIP (Work In Progress)?</div>
+            <div class="faq-answer">
+                WIP counts currently active issues:
+                <ul>
+                    <li><strong>WIP Count</strong>: Number of unresolved issues</li>
+                    <li><strong>Average WIP Age</strong>: How long items have been in progress</li>
+                    <li><strong>WIP by Status</strong>: Distribution across statuses (In Progress, Code Review, etc.)</li>
+                </ul>
+                Lower WIP counts and ages generally lead to faster completion.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">What are Flagged/Blocked Issues?</div>
+            <div class="faq-answer">
+                Issues marked as blocked or flagged need attention:
+                <ul>
+                    <li>Fetched using team-specific Jira filters</li>
+                    <li>Shows assignee and days blocked</li>
+                    <li>Removing blockers maintains team flow</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How are Bugs tracked?</div>
+            <div class="faq-answer">
+                Bug metrics track product quality:
+                <ul>
+                    <li><strong>Created</strong>: New bugs filed in the period</li>
+                    <li><strong>Resolved</strong>: Bugs fixed in the period</li>
+                    <li><strong>Net</strong>: Created - Resolved (negative is good)</li>
+                </ul>
+                Trend charts show 90-day history to identify patterns.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">What is Jira Cycle Time?</div>
+            <div class="faq-answer">
+                Jira Cycle Time measures issue resolution speed:
+                <ul>
+                    <li>Time from issue creation to resolution</li>
+                    <li>Calculated in hours, displayed in hours</li>
+                    <li>Average across all completed issues</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Time Windows -->
+<div class="card">
+    <h2>⏰ Time Windows</h2>
+
+    <div class="faq-item">
+        <div class="faq-question">What time periods are used?</div>
+        <div class="faq-answer">
+            Different dashboards use different time windows:
+            <ul>
+                <li><strong>Team Metrics</strong>: Last 90 days (configurable via <code>days_back</code> in config.yaml)</li>
+                <li><strong>Person Metrics</strong>: Last 90 days by default (can be changed with period selector)</li>
+                <li><strong>Jira Throughput</strong>: Last 12 weeks (84 days)</li>
+                <li><strong>Jira Trends</strong>: Last 90 days for bugs/scope charts</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">How often is data refreshed?</div>
+        <div class="faq-answer">
+            Data collection runs on a schedule:
+            <ul>
+                <li><strong>Automatic</strong>: Daily at 10:00 AM via launchd scheduler</li>
+                <li><strong>Manual</strong>: Run <code>python collect_data.py</code></li>
+                <li><strong>Duration</strong>: 15-30 minutes per collection</li>
+                <li><strong>Cache</strong>: Stored in <code>data/metrics_cache.pkl</code></li>
+            </ul>
+            Dashboard shows cache timestamp at top of page.
+        </div>
+    </div>
+</div>
+
+<!-- API Information -->
+<div class="card">
+    <h2>🔌 API Details</h2>
+
+    <div class="faq-item">
+        <div class="faq-question">Which GitHub API is used?</div>
+        <div class="faq-answer">
+            We use <strong>GitHub GraphQL API v4</strong> for efficiency:
+            <ul>
+                <li>Separate rate limit (5000 points/hour)</li>
+                <li>50-70% fewer API calls than REST</li>
+                <li>Single query fetches PRs + reviews + commits</li>
+            </ul>
+            See <code>src/collectors/github_graphql_collector.py</code> for implementation.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">How is Jira accessed?</div>
+        <div class="faq-answer">
+            We use <strong>Jira REST API</strong> with Bearer token authentication:
+            <ul>
+                <li>Team-specific filter IDs configured per team</li>
+                <li>JQL queries with date filtering</li>
+                <li>SSL verification disabled for self-signed certificates</li>
+            </ul>
+            Use <code>python list_jira_filters.py</code> to discover filter IDs.
+        </div>
+    </div>
+</div>
+
+<!-- Common Questions -->
+<div class="card">
+    <h2>❓ Common Questions</h2>
+
+    <div class="faq-item">
+        <div class="faq-question">Why does someone show 0 commits but have PRs?</div>
+        <div class="faq-answer">
+            This shouldn't happen after the commit counting fix, but possible causes:
+            <ul>
+                <li>Git author name doesn't match GitHub username</li>
+                <li>Commits were made by someone else but PR opened by this person</li>
+                <li>Data collection issue - try re-running collection</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">Why does someone show 0 Jira issues?</div>
+        <div class="faq-answer">
+            Possible reasons:
+            <ul>
+                <li>No Jira username mapping in config.yaml</li>
+                <li>No issues resolved in the last 90 days</li>
+                <li>Jira username doesn't match configuration</li>
+                <li>Issues assigned to different username/account</li>
+            </ul>
+            Check Jira username mapping in <code>config/config.yaml</code>.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">How do I add a new team member?</div>
+        <div class="faq-answer">
+            Update <code>config/config.yaml</code>:
+            <ol>
+                <li>Add GitHub username to <code>github.members</code> list</li>
+                <li>Add Jira username to <code>jira.members</code> list</li>
+                <li>Re-run data collection: <code>python collect_data.py</code></li>
+                <li>Restart dashboard: <code>launchctl restart com.team-metrics.dashboard</code></li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">Can I change the time window?</div>
+        <div class="faq-answer">
+            Yes, for team metrics:
+            <ul>
+                <li>Edit <code>days_back</code> in <code>config/config.yaml</code></li>
+                <li>Or use <code>--period</code> flag: <code>python collect_data.py --period 30d</code></li>
+                <li>Or use <code>--start-date</code> and <code>--end-date</code> flags</li>
+            </ul>
+            Person metrics are fixed at 90 days (can be changed via period selector on person page).
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">What does "Merge Rate" mean?</div>
+        <div class="faq-answer">
+            Merge Rate = (Merged PRs ÷ Total PRs) × 100%
+            <ul>
+                <li>100% = All PRs were merged</li>
+                <li>&lt;100% = Some PRs were closed without merging</li>
+                <li>Higher is generally better, but depends on team practices</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Technical Details -->
+<div class="card">
+    <h2>⚙️ Technical Details</h2>
+
+    <div class="faq-item">
+        <div class="faq-question">Where is data stored?</div>
+        <div class="faq-answer">
+            All collected data is cached locally:
+            <ul>
+                <li><code>data/metrics_cache.pkl</code> - Main metrics cache (pickle format)</li>
+                <li><code>logs/collect_data.log</code> - Collection logs</li>
+                <li><code>logs/dashboard.log</code> - Dashboard logs</li>
+            </ul>
+            Cache includes: teams, persons, comparison data, and timestamp.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">How are metrics calculated?</div>
+        <div class="faq-answer">
+            Calculation pipeline:
+            <ol>
+                <li>Raw data collected as lists of dicts</li>
+                <li>Converted to pandas DataFrames</li>
+                <li>Aggregated by <code>MetricsCalculator</code> in <code>src/models/metrics.py</code></li>
+                <li>Cached to disk as pickle</li>
+                <li>Loaded by Flask and passed to Jinja templates</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">What happens if collection fails?</div>
+        <div class="faq-answer">
+            Dashboard continues using old cache until successful collection:
+            <ul>
+                <li>Check <code>logs/collect_data.log</code> for errors</li>
+                <li>Verify API tokens in <code>config/config.yaml</code></li>
+                <li>Check API rate limits (GitHub/Jira)</li>
+                <li>Manually trigger: <code>python collect_data.py</code></li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
