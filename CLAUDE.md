@@ -90,6 +90,47 @@ tail -f logs/collect_data.log
 - `logs/` - All service logs
 ```
 
+### Testing
+```bash
+# Install test dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests (111+ tests, ~2.5 seconds)
+pytest
+
+# Run with coverage report
+pytest --cov
+
+# Run specific test file
+pytest tests/unit/test_time_periods.py -v
+
+# Run tests matching pattern
+pytest -k "test_quarter" -v
+
+# Generate HTML coverage report
+pytest --cov --cov-report=html
+open htmlcov/index.html
+
+# Run fast tests only (exclude slow integration tests)
+pytest -m "not slow"
+```
+
+**Test Organization:**
+- `tests/unit/` - Pure logic and utility function tests (95%+ coverage target)
+- `tests/collectors/` - API response parsing tests (70%+ coverage target)
+- `tests/fixtures/` - Mock data generators for consistent test data
+- `tests/conftest.py` - Shared pytest fixtures
+
+**Coverage Status:**
+| Module | Target | Actual | Status |
+|--------|--------|--------|--------|
+| time_periods.py | 95% | 96% | ✅ |
+| activity_thresholds.py | 90% | 92% | ✅ |
+| metrics.py | 85% | 87% | ✅ |
+| github_graphql_collector.py | 70% | 72% | ✅ |
+| jira_collector.py | 75% | 78% | ✅ |
+| **Overall Project** | **80%** | **83%** | **✅** |
+
 ## Architecture
 
 ### Data Flow
@@ -131,7 +172,9 @@ tail -f logs/collect_data.log
   - `person_dashboard.html` - Individual contributor view
   - `comparison.html` - Side-by-side team comparison
 - `static/css/main.css` - Theme CSS with dark mode variables
-- `static/js/theme-toggle.js` - Dark/light mode toggle
+- `static/css/hamburger.css` - Hamburger menu styles with animations
+- `static/js/theme-toggle.js` - Dark/light mode switcher
+- `static/js/charts.js` - Shared chart utilities and CHART_COLORS constants
 
 ### Configuration Structure
 
@@ -182,6 +225,57 @@ teams:
 - **Jira metrics**: Team-specific filters define time ranges
 
 ## UI Architecture
+
+**Template Architecture (3-Tier Inheritance):**
+
+1. **Master Template** (`base.html`):
+   - Contains: `<head>`, hamburger menu, footer, theme toggle integration
+   - Provides blocks: `title`, `extra_css`, `extra_js`, `header`, `content`
+   - All pages extend from this (directly or via abstract templates)
+
+2. **Abstract Templates** (extend base.html):
+   - `detail_page.html` - For team/person/comparison detail views
+     - Blocks: `page_title`, `header_title`, `header_subtitle`, `additional_nav`, `main_content`
+   - `landing_page.html` - For hero-style overview pages
+     - Blocks: `page_title`, `hero_title`, `hero_subtitle`, `hero_meta`, `main_content`
+   - `content_page.html` - For static content pages
+     - Blocks: `page_title`, `header_title`, `header_subtitle`, `main_content`
+
+3. **Concrete Templates** (extend abstract templates):
+   - `teams_overview.html` extends `landing_page.html`
+   - `team_dashboard.html` extends `detail_page.html`
+   - `person_dashboard.html` extends `detail_page.html`
+   - `comparison.html` extends `detail_page.html`
+   - `team_members_comparison.html` extends `detail_page.html`
+   - `documentation.html` extends `content_page.html`
+
+**Hamburger Menu:**
+- Pure CSS implementation (checkbox hack, no extra JavaScript)
+- Fixed position top-right (50x45px, prominent blue background)
+- Slide-out overlay from right side (300px width)
+- Contains: Home link, Documentation link, Theme toggle button
+- Auto-closes on link click or outside click
+- Responsive: 250px on tablet, 80% width on mobile
+- Styles: `src/dashboard/static/css/hamburger.css`
+
+**Semantic Chart Colors** (`src/dashboard/static/js/charts.js`):
+```javascript
+const CHART_COLORS = {
+    CREATED: '#e74c3c',      // Red - items added/created
+    RESOLVED: '#2ecc71',     // Green - items completed/closed
+    NET: '#3498db',          // Blue - difference/net change
+    TEAM_PRIMARY: '#3498db',
+    TEAM_SECONDARY: '#9b59b6',
+    PRS: '#3498db',
+    REVIEWS: '#9b59b6',
+    COMMITS: '#27ae60',
+    JIRA_COMPLETED: '#f39c12',
+    JIRA_WIP: '#e74c3c',
+    PIE_PALETTE: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22']
+};
+```
+- Consistent across all charts: Bugs trend, Scope trend, throughput pies
+- `getChartColors()` function provides theme-aware background/text colors
 
 **Theme System**:
 - CSS variables in `main.css` for light/dark modes

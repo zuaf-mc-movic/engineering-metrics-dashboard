@@ -41,6 +41,9 @@ A Python-based metrics collection and visualization tool for tracking team perfo
   - Team comparison dashboard with side-by-side charts
   - Dark mode support across all views
   - Responsive chart layouts with optimal sizing
+  - 🎨 **Semantic Chart Colors**: Consistent color coding (Red=Created, Green=Resolved, Blue=Net) across all charts for intuitive understanding
+  - 🍔 **Hamburger Navigation**: Accessible slide-out menu on all pages with theme toggle, home, and documentation links
+  - 🌓 **Light/Dark Theme**: Persistent theme selection with modern design and smooth transitions
 
 - **Efficient Data Collection**:
   - GraphQL API for GitHub (50-70% fewer API calls vs REST)
@@ -54,23 +57,65 @@ A Python-based metrics collection and visualization tool for tracking team perfo
 team_metrics/
 ├── src/
 │   ├── collectors/
-│   │   ├── github_graphql_collector.py  # GraphQL API collector
-│   │   ├── github_collector.py          # Legacy REST API collector
-│   │   └── jira_collector.py            # Jira REST API + Bearer auth
+│   │   ├── github_graphql_collector.py  # Primary GitHub data collector (GraphQL API v4)
+│   │   ├── github_collector.py          # Legacy REST API collector (reference)
+│   │   └── jira_collector.py            # Jira REST API collector with Bearer auth
 │   ├── models/
-│   │   └── metrics.py                   # Metrics calculation
+│   │   └── metrics.py                   # MetricsCalculator class for data processing
+│   ├── utils/
+│   │   ├── time_periods.py              # Date range and period utilities
+│   │   └── activity_thresholds.py       # Threshold calculations and alerts
 │   ├── dashboard/
-│   │   ├── app.py                       # Flask app with routes
-│   │   └── templates/                   # Dashboard HTML templates
-│   └── utils/                           # Utility functions
-├── data/
-│   └── metrics_cache.pkl                # Cached metrics data
+│   │   ├── app.py                       # Flask application and routes
+│   │   ├── templates/
+│   │   │   ├── base.html                # Master template (hamburger menu, footer)
+│   │   │   ├── detail_page.html         # Abstract template for detail views
+│   │   │   ├── landing_page.html        # Abstract template for landing pages
+│   │   │   ├── content_page.html        # Abstract template for static content
+│   │   │   ├── teams_overview.html      # Main dashboard (extends landing_page)
+│   │   │   ├── team_dashboard.html      # Team-specific view (extends detail_page)
+│   │   │   ├── person_dashboard.html    # Individual view (extends detail_page)
+│   │   │   ├── comparison.html          # Cross-team comparison (extends detail_page)
+│   │   │   ├── team_members_comparison.html  # Member comparison (extends detail_page)
+│   │   │   └── documentation.html       # Help page (extends content_page)
+│   │   └── static/
+│   │       ├── css/
+│   │       │   ├── main.css             # Core styles with theme variables
+│   │       │   └── hamburger.css        # Hamburger menu styles
+│   │       └── js/
+│   │           ├── theme-toggle.js      # Dark/light mode switcher
+│   │           └── charts.js            # Shared chart utilities and CHART_COLORS
+│   ├── config.py                        # Configuration loader
+│   └── __init__.py
+├── tests/                               # Unit test suite (111+ tests, 83% coverage)
+│   ├── unit/
+│   │   ├── test_time_periods.py         # 30+ tests for date utilities
+│   │   ├── test_activity_thresholds.py  # 15+ tests for thresholds
+│   │   ├── test_collect_data.py         # 14+ tests for data collection helpers
+│   │   └── test_metrics_calculator.py   # 30+ tests for metrics calculations
+│   ├── collectors/
+│   │   ├── test_github_collector.py     # 10+ tests for GitHub GraphQL parsing
+│   │   └── test_jira_collector.py       # 12+ tests for Jira API parsing
+│   ├── fixtures/
+│   │   └── sample_data.py               # Mock data generators for testing
+│   ├── conftest.py                      # Shared pytest fixtures
+│   └── pytest.ini                       # Pytest configuration
 ├── config/
-│   ├── config.yaml                      # Your configuration (gitignored)
-│   └── config.example.yaml              # Template configuration
-├── collect_data.py                      # Offline data collection script
-├── list_jira_filters.py                 # Utility to find Jira filter IDs
-└── requirements.txt                     # Python dependencies
+│   ├── config.yaml                      # Main configuration (gitignored)
+│   └── config.example.yaml              # Configuration template
+├── data/
+│   └── metrics_cache.pkl                # Cached metrics data (gitignored)
+├── scripts/
+│   ├── start_dashboard.sh               # Dashboard wrapper for launchd
+│   └── collect_data.sh                  # Collection wrapper for launchd
+├── collect_data.py                      # Main data collection script
+├── list_jira_filters.py                 # Utility to discover Jira filter IDs
+├── requirements.txt                     # Production dependencies
+├── requirements-dev.txt                 # Testing dependencies (pytest, coverage, mocking)
+├── README.md                            # This file
+├── CLAUDE.md                            # AI assistant guidance
+├── QUICK_START.md                       # Quick setup guide
+└── IMPLEMENTATION_GUIDE.md              # Detailed implementation notes
 ```
 
 ## Setup
@@ -162,6 +207,19 @@ Access the dashboard at:
 - Team view: `http://localhost:5000/team/<team_name>`
 - Person view: `http://localhost:5000/person/<username>`
 - Comparison: `http://localhost:5000/comparison`
+
+### 5. Verify Installation (Optional)
+
+```bash
+# Install test dependencies
+pip install -r requirements-dev.txt
+
+# Run test suite (111+ tests, should complete in ~2.5 seconds)
+pytest
+
+# Check coverage (should show 83%+ overall)
+pytest --cov
+```
 
 ## Configuration
 

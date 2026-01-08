@@ -348,6 +348,116 @@ The system supports tracking who "needs to be pushed to do more" via:
 
 This is implemented in `src/utils/activity_thresholds.py` but not yet integrated into the UI.
 
+## Frontend Architecture
+
+### Template System
+
+The dashboard uses a 3-tier Jinja2 template inheritance system for maintainability and consistency.
+
+**Tier 1: Master Template (`base.html`)**
+- Purpose: Provides universal structure for all pages
+- Contains: `<head>` with CSS/JS imports, hamburger menu, footer
+- Key features:
+  - Hamburger menu (checkbox-based, pure CSS, no JavaScript for open/close)
+  - Footer with dynamic year (via Flask context processor in app.py)
+  - Theme toggle integration
+  - Plotly.js CDN import
+- Blocks provided: `title`, `extra_css`, `extra_js`, `header`, `content`
+
+**Tier 2: Abstract Templates**
+
+Three specialized templates extend base.html for different page types:
+
+1. `detail_page.html` - For dashboards with headers and navigation
+   - Used by: team_dashboard, person_dashboard, comparison, team_members_comparison
+   - Provides: Structured header with title, subtitle, nav links
+   - Blocks: `page_title`, `header_title`, `header_subtitle`, `additional_nav`, `main_content`
+
+2. `landing_page.html` - For hero-style overview pages
+   - Used by: teams_overview
+   - Provides: Centered hero section with large title
+   - Blocks: `page_title`, `hero_title`, `hero_subtitle`, `hero_meta`, `main_content`
+
+3. `content_page.html` - For static content pages
+   - Used by: documentation
+   - Provides: Simple header and content area
+   - Blocks: `page_title`, `header_title`, `header_subtitle`, `main_content`
+
+**Tier 3: Concrete Templates**
+- Extend appropriate abstract template
+- Override blocks to provide page-specific content
+- No duplication of header/footer/menu code
+- Examples: teams_overview.html extends landing_page.html, team_dashboard.html extends detail_page.html
+
+### Navigation System
+
+**Hamburger Menu Implementation:**
+- Location: `src/dashboard/static/css/hamburger.css`
+- Technique: Checkbox hack (no JavaScript needed for open/close)
+- Structure:
+  ```html
+  <input type="checkbox" id="hamburger-toggle" class="hamburger-checkbox">
+  <label for="hamburger-toggle" class="hamburger-icon">...</label>
+  <div class="hamburger-overlay"></div>
+  <nav class="hamburger-menu">...</nav>
+  ```
+- Features:
+  - Fixed position top-right (z-index: 1001)
+  - 50x45px blue button with 3 white bars (made prominent after user feedback)
+  - Slides in from right (300px width)
+  - Dark overlay backdrop when open
+  - Animated menu items (staggered fade-in)
+  - Closes on outside click or link selection
+  - Responsive: 250px on tablet, 80% width on mobile
+
+**Navigation Items:**
+1. 🏠 Home - Returns to teams overview
+2. 📚 Documentation - Opens help page
+3. 🌓 Theme Toggle - Switch light/dark mode (persists via localStorage)
+
+### Chart Color System
+
+**Semantic Colors (`charts.js`):**
+```javascript
+const CHART_COLORS = {
+    CREATED: '#e74c3c',      // Red - bugs filed, scope added
+    RESOLVED: '#2ecc71',     // Green - bugs fixed, scope completed
+    NET: '#3498db',          // Blue - net difference (created - resolved)
+    TEAM_PRIMARY: '#3498db',
+    TEAM_SECONDARY: '#9b59b6',
+    PRS: '#3498db',
+    REVIEWS: '#9b59b6',
+    COMMITS: '#27ae60',
+    JIRA_COMPLETED: '#f39c12',
+    JIRA_WIP: '#e74c3c',
+    PIE_PALETTE: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22']
+};
+```
+
+**Color Usage:**
+- **Bugs Trend Chart**: Created=Red, Resolved=Green, Net=Blue
+- **Scope Trend Chart**: Created=Red, Resolved=Green, Net=Blue
+- **Throughput Pie Charts**: Use PIE_PALETTE for issue types
+- **Team Comparison Bar Charts**: TEAM_PRIMARY (blue) vs TEAM_SECONDARY (purple)
+
+**Theme-Aware Colors:**
+- `getChartColors()` function in `charts.js` provides dynamic colors based on current theme
+- Returns: `paper_bgcolor`, `plot_bgcolor`, `font_color`, `grid_color`
+- Charts automatically update when theme is toggled
+
+### Footer Implementation
+
+**Context Processor (`app.py`):**
+```python
+@app.context_processor
+def inject_current_year():
+    return {'current_year': datetime.now().year}
+```
+
+- Injects `current_year` variable into all templates
+- Footer displays: "© 2026 Team Metrics Dashboard. [Links]"
+- Automatically updates each year without code changes
+
 ## Next Steps
 
 1. **Run Filter Discovery:** Get your actual filter IDs
@@ -374,3 +484,131 @@ Potential improvements not yet implemented:
 - Export to CSV/Excel
 - Historical trend tracking
 - Slack/email notifications for blocked items
+
+## Testing Infrastructure
+
+### Test Organization
+
+```
+tests/
+├── unit/                               # Pure logic tests (95%+ coverage target)
+│   ├── test_time_periods.py            # 30+ tests: quarters, periods, date parsing
+│   ├── test_activity_thresholds.py     # 15+ tests: averages, trends, flags
+│   ├── test_collect_data.py            # 14+ tests: username mapping, config parsing
+│   └── test_metrics_calculator.py      # 30+ tests: PR/review/commit metrics
+├── collectors/                         # API parsing tests (70%+ coverage target)
+│   ├── test_github_collector.py        # 10+ tests: GraphQL response parsing
+│   └── test_jira_collector.py          # 12+ tests: status times, throughput, WIP
+├── fixtures/
+│   └── sample_data.py                  # Mock data generators
+├── conftest.py                         # Shared pytest fixtures
+└── pytest.ini                          # Pytest configuration
+```
+
+### Testing Stack
+
+- **pytest** (7.4+) - Modern Python testing framework
+- **pytest-cov** - Coverage reporting (HTML + terminal)
+- **pytest-mock** - Mocking utilities
+- **freezegun** - Time-based testing (freeze dates for reproducibility)
+- **responses** - HTTP request mocking (GitHub/Jira API calls)
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest                          # Output: 111 passed in ~2.5s
+
+# With coverage
+pytest --cov                    # Overall: 83% coverage
+
+# Specific module coverage
+pytest --cov=src.utils.time_periods --cov-report=term-missing
+
+# HTML coverage report
+pytest --cov --cov-report=html
+open htmlcov/index.html
+
+# Run specific test file
+pytest tests/unit/test_time_periods.py -v
+
+# Run tests matching pattern
+pytest -k "test_quarter" -v
+
+# Fast tests only (exclude @pytest.mark.slow)
+pytest -m "not slow"
+```
+
+### Test Structure (AAA Pattern)
+
+All tests follow Arrange-Act-Assert pattern:
+
+```python
+def test_parse_period_to_dates_90d_format():
+    # Arrange
+    period = "90d"
+    current_date = datetime(2025, 3, 15, tzinfo=timezone.utc)
+
+    # Act
+    with freeze_time(current_date):
+        start_date, end_date = parse_period_to_dates(period)
+
+    # Assert
+    expected_start = datetime(2024, 12, 15, tzinfo=timezone.utc)
+    assert start_date == expected_start
+    assert end_date == current_date
+```
+
+### Shared Fixtures (`conftest.py`)
+
+Available in all tests:
+
+- `sample_pr_dataframe()` - Mock DataFrame with 3 PRs
+- `sample_reviews_dataframe()` - Mock review data
+- `sample_commits_dataframe()` - Mock commit data
+- `empty_dataframes()` - Empty DataFrames for edge case testing
+- `sample_team_config()` - Mock team configuration
+- `sample_jira_issues()` - Mock Jira issue list
+- `sample_github_graphql_response()` - Mock GraphQL API response
+
+### Mock Data Generators (`fixtures/sample_data.py`)
+
+Functions for consistent test data:
+
+- `get_github_graphql_pr_response()` - Full PR response with reviews/commits
+- `get_jira_issue_response()` - Issue with changelog and status transitions
+- `get_jira_filter_response()` - Filter results with multiple issues
+
+### Coverage Goals
+
+| Module | Target | Actual | Status |
+|--------|--------|--------|--------|
+| time_periods.py | 95% | 96% | ✅ |
+| activity_thresholds.py | 90% | 92% | ✅ |
+| metrics.py | 85% | 87% | ✅ |
+| github_graphql_collector.py | 70% | 72% | ✅ |
+| jira_collector.py | 75% | 78% | ✅ |
+| **Overall Project** | **80%** | **83%** | **✅** |
+
+### Adding New Tests
+
+1. **Choose test file** based on module being tested
+2. **Use appropriate fixtures** from conftest.py or sample_data.py
+3. **Follow AAA pattern** (Arrange, Act, Assert)
+4. **Name descriptively**: `test_<function>_<scenario>_<expected_result>`
+5. **Parametrize similar tests** to reduce duplication:
+   ```python
+   @pytest.mark.parametrize("invalid_quarter", [0, 5, -1, 13])
+   def test_get_quarter_dates_invalid_quarter_raises_error(invalid_quarter):
+       with pytest.raises(ValueError):
+           get_quarter_dates(invalid_quarter, 2025)
+   ```
+
+### Best Practices
+
+- ✅ Tests run fast (< 100ms each, no I/O)
+- ✅ No real API calls (use @responses.activate or mocks)
+- ✅ Freeze time for date-dependent tests (freezegun)
+- ✅ Test edge cases (empty inputs, None values, zero division)
+- ✅ One assertion per test (single responsibility)
+- ✅ Clear failure messages

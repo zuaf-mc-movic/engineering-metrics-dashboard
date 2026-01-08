@@ -274,6 +274,49 @@ python collect_data.py
 
 ---
 
+## Development
+
+### Install Development Dependencies (Optional, for Testing)
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+## Verification (Optional)
+
+Run the test suite to verify everything is working:
+
+```bash
+# Run all tests
+pytest
+
+# Expected output:
+# ============================= test session starts ==============================
+# collected 111 items
+#
+# tests/unit/test_time_periods.py ................              [ 14%]
+# tests/unit/test_activity_thresholds.py ...........            [ 24%]
+# tests/unit/test_collect_data.py ..............                [ 36%]
+# tests/unit/test_metrics_calculator.py ........................ [ 58%]
+# tests/collectors/test_github_collector.py ..........          [ 67%]
+# tests/collectors/test_jira_collector.py ............          [ 78%]
+#
+# ============================== 111 passed in 2.35s ==============================
+
+# Check test coverage
+pytest --cov
+
+# Expected coverage: 83%+ overall
+```
+
+**All tests passing indicates:**
+- Date utilities working correctly
+- Metrics calculations accurate
+- API response parsing functional
+- Configuration mapping working
+
+---
+
 ## Next Steps / Improvements
 
 1. **Scheduled collection** - Set up cron job to run `collect_data.py` daily at 6am
