@@ -69,18 +69,16 @@
         {% block content %}
         <!-- Page-specific content goes here -->
         {% endblock %}
-    </div>
 
-    <!-- Footer -->
-    <footer class="page-footer">
-        <div class="footer-content">
+        <!-- Footer -->
+        <footer class="page-footer">
             <p>&copy; {{ current_year }} Team Metrics Dashboard</p>
             <p class="footer-links">
                 <a href="/">Home</a> |
                 <a href="/documentation">Documentation</a>
             </p>
-        </div>
-    </footer>
+        </footer>
+    </div>
 
     {% block extra_js %}{% endblock %}
 </body>
