@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{# Abstract template for detail pages (team, person, comparison views) #}
+
+{% block title %}{{ page_title }} - Team Metrics Dashboard{% endblock %}
+
+{% block header %}
+<header>
+    <h1>{% block header_title %}Detail Page{% endblock %}</h1>
+
+    {% block header_subtitle %}
+    <p class="subtitle">Last updated: {{ updated_at.strftime('%Y-%m-%d %H:%M:%S') if updated_at else 'N/A' }}</p>
+    {% endblock %}
+
+    {% block header_meta %}
+    {# Optional metadata block for period info, filters, etc. #}
+    {% endblock %}
+
+    {% block header_nav %}
+    <div class="nav">
+        <a href="/">← Home</a>
+        {% block additional_nav %}
+        {# Page-specific navigation links #}
+        {% endblock %}
+    </div>
+    {% endblock %}
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="content-area">
+    {% block main_content %}
+    {# Page-specific content goes here #}
+    {% endblock %}
+</div>
+{% endblock %}

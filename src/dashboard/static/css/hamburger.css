@@ -1,0 +1,235 @@
+/* Hamburger Menu Styles for Team Metrics Dashboard */
+
+/* Hide the checkbox */
+.hamburger-checkbox {
+    display: none;
+}
+
+/* Hamburger Icon (3 bars) */
+.hamburger-icon {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+    cursor: pointer;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 30px;
+    height: 25px;
+    transition: transform 0.3s ease;
+}
+
+.hamburger-icon span {
+    display: block;
+    height: 3px;
+    width: 100%;
+    background: var(--text-primary);
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
+/* Hamburger animation when open */
+.hamburger-checkbox:checked ~ .hamburger-icon span:nth-child(1) {
+    transform: translateY(11px) rotate(45deg);
+}
+
+.hamburger-checkbox:checked ~ .hamburger-icon span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-checkbox:checked ~ .hamburger-icon span:nth-child(3) {
+    transform: translateY(-11px) rotate(-45deg);
+}
+
+/* Overlay backdrop */
+.hamburger-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.hamburger-checkbox:checked ~ .hamburger-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Slide-out Menu */
+.hamburger-menu {
+    position: fixed;
+    top: 0;
+    right: -300px;
+    width: 300px;
+    height: 100%;
+    background: var(--bg-secondary);
+    box-shadow: -2px 0 8px var(--shadow);
+    z-index: 1000;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+}
+
+.hamburger-checkbox:checked ~ .hamburger-menu {
+    right: 0;
+}
+
+/* Menu Content */
+.menu-content {
+    padding: 80px 30px 30px 30px;
+}
+
+.menu-content h3 {
+    color: var(--text-heading);
+    font-size: 20px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+/* Menu Items */
+.menu-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-items li {
+    margin-bottom: 15px;
+}
+
+.menu-items li a {
+    display: block;
+    padding: 12px 15px;
+    color: var(--text-primary);
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.menu-items li a:hover {
+    background: var(--bg-tertiary);
+    color: var(--accent-primary);
+}
+
+/* Menu Divider */
+.menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 20px 0;
+}
+
+/* Theme Toggle Button in Menu */
+.theme-toggle-menu {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 12px 15px;
+    background: var(--bg-tertiary);
+    border: none;
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.theme-toggle-menu:hover {
+    background: var(--accent-primary);
+    color: #ffffff;
+}
+
+.theme-toggle-menu:active {
+    transform: scale(0.98);
+}
+
+.theme-toggle-menu .theme-icon {
+    margin-right: 10px;
+    font-size: 20px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .hamburger-menu {
+        width: 250px;
+        right: -250px;
+    }
+
+    .menu-content {
+        padding: 70px 20px 20px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hamburger-menu {
+        width: 80%;
+        max-width: 300px;
+        right: -100%;
+    }
+
+    .hamburger-icon {
+        top: 15px;
+        right: 15px;
+    }
+}
+
+/* Close menu when clicking a link (handled by label for checkbox) */
+.menu-items li a {
+    position: relative;
+}
+
+/* Accessibility improvements */
+.hamburger-icon:focus {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+.hamburger-checkbox:focus ~ .hamburger-icon {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .hamburger-overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+/* Animation for menu items (stagger effect) */
+.hamburger-checkbox:checked ~ .hamburger-menu .menu-items li {
+    animation: slideInMenu 0.3s ease forwards;
+    opacity: 0;
+}
+
+.hamburger-checkbox:checked ~ .hamburger-menu .menu-items li:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.hamburger-checkbox:checked ~ .hamburger-menu .menu-items li:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.hamburger-checkbox:checked ~ .hamburger-menu .menu-items li:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.hamburger-checkbox:checked ~ .hamburger-menu .menu-items li:nth-child(4) {
+    animation-delay: 0.25s;
+}
+
+@keyframes slideInMenu {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

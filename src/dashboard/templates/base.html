@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Team Metrics Dashboard{% endblock %}</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/hamburger.css') }}">
+
+    <!-- JavaScript -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Hamburger Menu -->
+    <input type="checkbox" id="hamburger-toggle" class="hamburger-checkbox">
+    <label for="hamburger-toggle" class="hamburger-icon">
+        <span></span>
+        <span></span>
+        <span></span>
+    </label>
+
+    <!-- Overlay Menu -->
+    <nav class="hamburger-menu">
+        <div class="menu-content">
+            <h3>Navigation</h3>
+            <ul class="menu-items">
+                <li><a href="/">🏠 Home</a></li>
+                <li><a href="/documentation">📚 Documentation</a></li>
+                <li class="menu-divider"></li>
+                <li>
+                    <button onclick="toggleTheme()" class="theme-toggle-menu">
+                        <span class="theme-icon">🌙</span>
+                        <span class="theme-text">Dark Mode</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Overlay backdrop -->
+    <label for="hamburger-toggle" class="hamburger-overlay"></label>
+
+    <!-- Main Content Container -->
+    <div class="container">
+        {% block header %}
+        <header>
+            <h1>{% block header_title %}Team Metrics Dashboard{% endblock %}</h1>
+            {% block header_subtitle %}{% endblock %}
+            {% block header_nav %}{% endblock %}
+        </header>
+        {% endblock %}
+
+        {% block content %}
+        <!-- Page-specific content goes here -->
+        {% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="page-footer">
+        <div class="footer-content">
+            <p>&copy; {{ current_year }} Team Metrics Dashboard</p>
+            <p class="footer-links">
+                <a href="/">Home</a> |
+                <a href="/documentation">Documentation</a>
+            </p>
+        </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

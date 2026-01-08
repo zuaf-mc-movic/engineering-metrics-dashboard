@@ -15,6 +15,12 @@ import pandas as pd
 
 app = Flask(__name__)
 
+# Context processor to inject current year into all templates
+@app.context_processor
+def inject_current_year():
+    """Inject current year for footer copyright"""
+    return {'current_year': datetime.now().year}
+
 # Global cache
 metrics_cache = {
     'data': None,

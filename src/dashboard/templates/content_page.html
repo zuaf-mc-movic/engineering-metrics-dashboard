@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{# Abstract template for static content pages (documentation, FAQ, etc.) #}
+
+{% block title %}{{ page_title }} - Team Metrics Dashboard{% endblock %}
+
+{% block header %}
+<header>
+    {% block content_header %}
+    <h1>{% block header_title %}Content Page{% endblock %}</h1>
+
+    {% block header_subtitle %}
+    {# Optional subtitle for content pages #}
+    {% endblock %}
+    {% endblock %}
+
+    <div class="nav">
+        <a href="/">← Home</a>
+        {% block additional_nav %}
+        {# Additional navigation links if needed #}
+        {% endblock %}
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="content-area">
+    {% block main_content %}
+    {# Static content goes here #}
+    {% endblock %}
+</div>
+{% endblock %}

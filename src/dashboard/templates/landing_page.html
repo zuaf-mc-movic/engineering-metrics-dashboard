@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{# Abstract template for landing/overview pages with hero-style layout #}
+
+{% block title %}{{ page_title }} - Team Metrics Dashboard{% endblock %}
+
+{% block header %}
+{# Hero-style header for landing pages #}
+<div class="hero-header">
+    <div class="header-content">
+        <h1 class="hero-title">{% block hero_title %}Team Metrics Dashboard{% endblock %}</h1>
+
+        {% block hero_subtitle %}
+        <p class="hero-subtitle">Track and analyze team performance</p>
+        {% endblock %}
+
+        {% block hero_meta %}
+        {# Optional metadata like timestamp #}
+        {% endblock %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="landing-content">
+    {% block main_content %}
+    {# Page-specific content goes here (team cards, overview, etc.) #}
+    {% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Hero-style header for landing pages */
+    .hero-header {
+        text-align: center;
+        padding: 60px 20px 40px 20px;
+        margin-bottom: 40px;
+    }
+
+    .hero-title {
+        font-size: 3em;
+        margin-bottom: 10px;
+        color: var(--text-primary);
+    }
+
+    .hero-subtitle {
+        font-size: 1.2em;
+        color: var(--text-secondary);
+        margin-top: 10px;
+    }
+
+    .landing-content {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2em;
+        }
+
+        .hero-subtitle {
+            font-size: 1em;
+        }
+
+        .hero-header {
+            padding: 40px 20px 30px 20px;
+        }
+    }
+</style>
+{% endblock %}

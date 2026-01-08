@@ -6,9 +6,22 @@ document.documentElement.setAttribute('data-theme', currentTheme);
 // Update button text based on current theme
 function updateButtonText() {
     const theme = document.documentElement.getAttribute('data-theme');
+
+    // Update standalone theme toggle button (if exists)
     const button = document.querySelector('.theme-toggle');
     if (button) {
         button.textContent = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+    }
+
+    // Update theme toggle in hamburger menu
+    const menuButton = document.querySelector('.theme-toggle-menu');
+    if (menuButton) {
+        const icon = menuButton.querySelector('.theme-icon');
+        const text = menuButton.querySelector('.theme-text');
+        if (icon && text) {
+            icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            text.textContent = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+        }
     }
 }
 
