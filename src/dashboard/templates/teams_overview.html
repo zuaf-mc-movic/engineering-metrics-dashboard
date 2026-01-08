@@ -1,233 +1,199 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Team Metrics Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
-    <style>
-        /* Custom styling for overview page */
-        body {
-            background: var(--bg-primary);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
+{% extends "landing_page.html" %}
 
-        .header {
-            text-align: center;
-            color: var(--text-primary);
-            margin-bottom: 40px;
-        }
+{% block title %}Team Metrics Dashboard{% endblock %}
+{% block page_title %}Team Metrics Dashboard{% endblock %}
 
-        .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-            color: var(--text-primary);
-        }
+{% block hero_title %}🚀 Team Metrics Dashboard{% endblock %}
 
-        .header p {
-            font-size: 1.2em;
-            color: var(--text-secondary);
-        }
+{% block hero_subtitle %}
+<p class="hero-subtitle">Multi-Team Performance Tracking</p>
+{% endblock %}
 
-        .timestamp {
-            text-align: center;
-            color: var(--text-secondary);
-            margin-bottom: 30px;
-            font-size: 0.9em;
-        }
+{% block hero_meta %}
+{% if updated_at %}
+<div class="timestamp" style="margin-top: 20px;">
+    Last updated: {{ updated_at.strftime('%Y-%m-%d %H:%M:%S') }}
+</div>
+<div class="timestamp" style="margin-top: 10px;">
+    📊 Team metrics: Last {{ config.days_back }} days | 👤 Person metrics: Last 90 days
+</div>
+{% endif %}
+{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Custom styling for overview page */
+    body {
+        padding: 40px 20px;
+    }
+
+    .timestamp {
+        text-align: center;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        font-size: 0.9em;
+    }
+
+    .teams-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+        margin-bottom: 40px;
+    }
+
+    .team-card {
+        background: var(--bg-secondary);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        transition: transform 0.3s, box-shadow 0.3s;
+        cursor: pointer;
+    }
+
+    .team-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+    }
+
+    .team-card h2 {
+        font-size: 2em;
+        color: var(--accent-primary);
+        margin-bottom: 20px;
+        border-bottom: 3px solid var(--accent-primary);
+        padding-bottom: 10px;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .metric {
+        text-align: center;
+        padding: 15px;
+        background: var(--bg-tertiary);
+        border-radius: 10px;
+    }
+
+    .metric-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: var(--accent-primary);
+        display: block;
+    }
+
+    .metric-label {
+        font-size: 0.9em;
+        color: var(--text-secondary);
+        margin-top: 5px;
+        display: block;
+    }
+
+    .quick-links {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 40px;
+    }
+
+    .quick-link {
+        background: var(--bg-secondary);
+        border-radius: 15px;
+        padding: 20px;
+        text-align: center;
+        text-decoration: none;
+        color: var(--accent-primary);
+        font-weight: bold;
+        font-size: 1.1em;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+    }
+
+    .quick-link:hover {
+        background: var(--accent-primary);
+        color: white;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    }
+
+    @media (max-width: 768px) {
         .teams-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 30px;
-            margin-bottom: 40px;
+            grid-template-columns: 1fr;
         }
+    }
+</style>
+{% endblock %}
 
-        .team-card {
-            background: var(--bg-secondary);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            transition: transform 0.3s, box-shadow 0.3s;
-            cursor: pointer;
-        }
+{% block main_content %}
+<div class="teams-grid">
+    {% for team in teams %}
+    <div class="team-card" onclick="window.location.href='/team/{{ team.name }}'">
+        <h2>{{ team.display_name }}</h2>
 
-        .team-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 50px rgba(0,0,0,0.3);
-        }
-
-        .team-card h2 {
-            font-size: 2em;
-            color: var(--accent-primary);
-            margin-bottom: 20px;
-            border-bottom: 3px solid var(--accent-primary);
-            padding-bottom: 10px;
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .metric {
-            text-align: center;
-            padding: 15px;
-            background: var(--bg-tertiary);
-            border-radius: 10px;
-        }
-
-        .metric-value {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: var(--accent-primary);
-            display: block;
-        }
-
-        .metric-label {
-            font-size: 0.9em;
-            color: var(--text-secondary);
-            margin-top: 5px;
-            display: block;
-        }
-
-        .quick-links {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 40px;
-        }
-
-        .quick-link {
-            background: var(--bg-secondary);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            text-decoration: none;
-            color: var(--accent-primary);
-            font-weight: bold;
-            font-size: 1.1em;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            transition: all 0.3s;
-        }
-
-        .quick-link:hover {
-            background: var(--accent-primary);
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        }
-
-        .refresh-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #764ba2;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 1em;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-            transition: all 0.3s;
-        }
-
-        .refresh-btn:hover {
-            background: #667eea;
-            transform: scale(1.05);
-        }
-    </style>
-</head>
-<body>
-    <button onclick="toggleTheme()" class="theme-toggle">🌙 Dark Mode</button>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Team Metrics Dashboard</h1>
-            <p>Multi-Team Performance Tracking</p>
-        </div>
-
-        {% if updated_at %}
-        <div class="timestamp">
-            Last updated: {{ updated_at.strftime('%Y-%m-%d %H:%M:%S') }}
-        </div>
-        <div class="timestamp" style="margin-top: 10px; font-size: 1em;">
-            📊 Team metrics: Last {{ config.days_back }} days | 👤 Person metrics: Last 90 days
-        </div>
-        {% endif %}
-
-        <div class="teams-grid">
-            {% for team in teams %}
-            <div class="team-card" onclick="window.location.href='/team/{{ team.name }}'">
-                <h2>{{ team.display_name }}</h2>
-
-                <div class="metrics-grid">
-                    <div class="metric">
-                        <span class="metric-value">{{ team.pr_count }}</span>
-                        <span class="metric-label">Pull Requests</span>
-                        <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
-                            Total PRs created during the period
-                        </p>
-                    </div>
-
-                    <div class="metric">
-                        <span class="metric-value">{{ team.review_count }}</span>
-                        <span class="metric-label">Code Reviews</span>
-                        <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
-                            Reviews by team members
-                        </p>
-                    </div>
-
-                    <div class="metric">
-                        <span class="metric-value">{{ team.commit_count }}</span>
-                        <span class="metric-label">Commits</span>
-                        <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
-                            Total commits pushed
-                        </p>
-                    </div>
-
-                    <div class="metric">
-                        <span class="metric-value">{{ "%.1f"|format(team.avg_cycle_time) }}h</span>
-                        <span class="metric-label">Avg Cycle Time</span>
-                        <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
-                            PR creation to merge time
-                        </p>
-                    </div>
-
-                    {% if team.throughput > 0 %}
-                    <div class="metric">
-                        <span class="metric-value">{{ "%.1f"|format(team.throughput) }}</span>
-                        <span class="metric-label">Throughput/Week</span>
-                        <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
-                            Issues completed per week
-                        </p>
-                    </div>
-                    {% endif %}
-
-                    {% if team.wip_count > 0 %}
-                    <div class="metric">
-                        <span class="metric-value">{{ team.wip_count }}</span>
-                        <span class="metric-label">WIP Items</span>
-                        <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
-                            Current work in progress
-                        </p>
-                    </div>
-                    {% endif %}
-                </div>
+        <div class="metrics-grid">
+            <div class="metric">
+                <span class="metric-value">{{ team.pr_count }}</span>
+                <span class="metric-label">Pull Requests</span>
+                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                    Total PRs created during the period
+                </p>
             </div>
-            {% endfor %}
-        </div>
 
-        <div class="quick-links">
-            <a href="/comparison" class="quick-link">📊 Compare Teams</a>
-            <a href="/documentation" class="quick-link">📚 Documentation</a>
-            {% for team in teams %}
-            <a href="/team/{{ team.name }}" class="quick-link">👥 {{ team.display_name }}</a>
-            {% endfor %}
+            <div class="metric">
+                <span class="metric-value">{{ team.review_count }}</span>
+                <span class="metric-label">Code Reviews</span>
+                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                    Reviews by team members
+                </p>
+            </div>
+
+            <div class="metric">
+                <span class="metric-value">{{ team.commit_count }}</span>
+                <span class="metric-label">Commits</span>
+                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                    Total commits pushed
+                </p>
+            </div>
+
+            <div class="metric">
+                <span class="metric-value">{{ "%.1f"|format(team.avg_cycle_time) }}h</span>
+                <span class="metric-label">Avg Cycle Time</span>
+                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                    PR creation to merge time
+                </p>
+            </div>
+
+            {% if team.throughput > 0 %}
+            <div class="metric">
+                <span class="metric-value">{{ "%.1f"|format(team.throughput) }}</span>
+                <span class="metric-label">Throughput/Week</span>
+                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                    Issues completed per week
+                </p>
+            </div>
+            {% endif %}
+
+            {% if team.wip_count > 0 %}
+            <div class="metric">
+                <span class="metric-value">{{ team.wip_count }}</span>
+                <span class="metric-label">WIP Items</span>
+                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                    Current work in progress
+                </p>
+            </div>
+            {% endif %}
         </div>
     </div>
-</body>
-</html>
+    {% endfor %}
+</div>
+
+<div class="quick-links">
+    <a href="/comparison" class="quick-link">📊 Compare Teams</a>
+    <a href="/documentation" class="quick-link">📚 Documentation</a>
+    {% for team in teams %}
+    <a href="/team/{{ team.name }}" class="quick-link">👥 {{ team.display_name }}</a>
+    {% endfor %}
+</div>
+{% endblock %}
