@@ -85,19 +85,29 @@ h2 {
     font-size: 24px;
 }
 
-/* Navigation */
-.nav {
-    margin: 20px 0;
+/* Breadcrumbs Navigation */
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: var(--text-secondary);
 }
 
-.nav a {
+.breadcrumbs a {
     color: var(--accent-primary);
     text-decoration: none;
-    margin-right: 20px;
+    transition: color 0.2s ease;
 }
 
-.nav a:hover {
+.breadcrumbs a:hover {
+    color: var(--accent-secondary);
     text-decoration: underline;
+}
+
+.breadcrumbs a:not(:last-child)::after {
+    content: " / ";
+    margin: 0 8px;
+    color: var(--text-secondary);
 }
 
 /* Metrics grid */

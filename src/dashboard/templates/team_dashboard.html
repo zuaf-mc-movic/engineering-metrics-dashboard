@@ -15,14 +15,8 @@
 📊 Team metrics: Last {{ days_back }} days | 👤 Person metrics: Last 90 days
 {% endblock %}
 
-{% block additional_nav %}
-<a href="/team/{{ team_name }}/compare">👥 Compare Members</a>
-<a href="/comparison">📊 Compare Teams</a>
-{% if team_name == 'Native' %}
-<a href="/team/WebTC">👥 WebTC Team →</a>
-{% else %}
-<a href="/team/Native">← 👥 Native Team</a>
-{% endif %}
+{% block breadcrumb_items %}
+<a href="/team/{{ team_name }}">{{ team_display_name }}</a>
 {% endblock %}
 
 {% block main_content %}

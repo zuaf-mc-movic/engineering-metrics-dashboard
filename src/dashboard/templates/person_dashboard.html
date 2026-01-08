@@ -35,10 +35,11 @@
 </div>
 {% endblock %}
 
-{% block additional_nav %}
+{% block breadcrumb_items %}
 {% if team_name %}
 <a href="/team/{{ team_name }}">{{ team_name }} Team</a>
 {% endif %}
+<a href="/person/{{ username }}">{{ username }}</a>
 {% endblock %}
 
 {% block extra_js %}

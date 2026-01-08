@@ -27,16 +27,16 @@
     {% block header_meta %}
     {# Optional metadata block for period info, filters, etc. #}
     {% endblock %}
-
-    {% block header_nav %}
-    <div class="nav">
-        <a href="/">← Home</a>
-        {% block additional_nav %}
-        {# Page-specific navigation links #}
-        {% endblock %}
-    </div>
-    {% endblock %}
 </header>
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" style="margin-bottom: 30px; padding: 15px 0; border-bottom: 1px solid var(--border-color);">
+    <a href="/">Home</a>
+    {% block breadcrumb_items %}
+    {# Page-specific breadcrumb links #}
+    {% endblock %}
+</nav>
+{% endblock %}
 {% endblock %}
 
 {% block content %}

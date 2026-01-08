@@ -15,9 +15,8 @@
 📊 Comparing last {{ config.days_back if config else 90 }} days
 {% endblock %}
 
-{% block additional_nav %}
-<a href="/team/Native">👥 Native Team</a>
-<a href="/team/WebTC">👥 WebTC Team</a>
+{% block breadcrumb_items %}
+<a href="/comparison">Team Comparison</a>
 {% endblock %}
 
 {% block main_content %}
