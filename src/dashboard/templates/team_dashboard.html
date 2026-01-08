@@ -1,49 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ team_display_name }} - Team Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
-    <script>
-        // Get theme-aware colors for charts
-        function getChartColors() {
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            return {
-                paper_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
-                plot_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
-                font_color: isDark ? '#e0e0e0' : '#2c3e50',
-                grid_color: isDark ? '#444' : '#ecf0f1'
-            };
-        }
-    </script>
-</head>
-<body>
-    <button onclick="toggleTheme()" class="theme-toggle">🌙 Dark Mode</button>
-    <div class="container">
-        <header>
-            <h1>{{ team_display_name }}</h1>
-            <p class="subtitle">Last updated: {{ updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-            <p class="subtitle" style="margin-top: 8px;">
-                📅 Team Metrics: Last {{ days_back }} days |
-                👤 Person Metrics: Last 90 days
-            </p>
-            <div class="nav">
-                <a href="/">← Home</a>
-                <a href="/team/{{ team_name }}/compare">👥 Compare Members</a>
-                <a href="/comparison">Compare Teams</a>
-                <a href="/documentation">📚 Documentation</a>
-                {% if team_name == 'Native' %}
-                <a href="/team/WebTC">WebTC Team →</a>
-                {% else %}
-                <a href="/team/Native">← Native Team</a>
-                {% endif %}
-            </div>
-        </header>
+{% extends "detail_page.html" %}
 
-        <h2 style="margin: 30px 0 15px 0; font-size: 24px;">GitHub Metrics</h2>
+{% block title %}{{ team_display_name }} - Dashboard{% endblock %}
+{% block page_title %}{{ team_display_name }} - Dashboard{% endblock %}
+
+{% block header_title %}{{ team_display_name }}{% endblock %}
+
+{% block header_subtitle %}
+<p class="subtitle">📅 Team Metrics: Last {{ days_back }} days | 👤 Person Metrics: Last 90 days</p>
+{% endblock %}
+
+{% block additional_nav %}
+<a href="/team/{{ team_name }}/compare">👥 Compare Members</a>
+<a href="/comparison">Compare Teams</a>
+<a href="/documentation">📚 Documentation</a>
+{% if team_name == 'Native' %}
+<a href="/team/WebTC">WebTC Team →</a>
+{% else %}
+<a href="/team/Native">← Native Team</a>
+{% endif %}
+{% endblock %}
+
+{% block main_content %}
+<h2 style="margin: 30px 0 15px 0; font-size: 24px;">GitHub Metrics</h2>
         <div class="metrics-grid">
             <div class="card">
                 <h2>Pull Requests</h2>
@@ -366,8 +344,8 @@
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Net (Created - Resolved)',
-                        line: {color: '#3498db', width: 2},
-                        marker: {color: '#3498db', size: 6},
+                        line: {color: CHART_COLORS.CREATED, width: 2},
+                        marker: {color: CHART_COLORS.CREATED, size: 6},
                         xaxis: 'x2',
                         yaxis: 'y2'
                     }
@@ -455,8 +433,8 @@
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Resolved',
-                        line: {color: '#9b59b6', width: 2},
-                        marker: {color: '#9b59b6', size: 6},
+                        line: {color: CHART_COLORS.RESOLVED, width: 2},
+                        marker: {color: CHART_COLORS.RESOLVED, size: 6},
                         xaxis: 'x',
                         yaxis: 'y'
                     },
@@ -466,8 +444,8 @@
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Net (Created - Resolved)',
-                        line: {color: '#e67e22', width: 2},
-                        marker: {color: '#e67e22', size: 6},
+                        line: {color: CHART_COLORS.NET, width: 2},
+                        marker: {color: CHART_COLORS.NET, size: 6},
                         xaxis: 'x2',
                         yaxis: 'y2'
                     }
@@ -565,5 +543,4 @@
         {% endif %}
         {% endif %}
     </div>
-</body>
-</html>
+{% endblock %}

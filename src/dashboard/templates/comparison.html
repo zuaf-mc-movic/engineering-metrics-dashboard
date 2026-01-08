@@ -1,91 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Comparison</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
-    <style>
-        /* Additional comparison-specific styles if needed */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+{% extends "detail_page.html" %}
 
-        /* Add spacing after GitHub Metrics table */
-        .card:has(table) {
-            margin-bottom: 30px;
-        }
+{% block title %}Team Comparison{% endblock %}
+{% block page_title %}Team Comparison{% endblock %}
 
-        /* Chart container sizing */
-        .comparison-grid {
-            margin-bottom: 30px;
-        }
+{% block header_title %}Team Comparison{% endblock %}
 
-        .comparison-grid .card {
-            min-width: 0;
-            overflow: hidden;
-            padding: 20px;
-            margin-bottom: 10px;
-        }
+{% block additional_nav %}
+<a href="/team/Native">Native Team</a>
+<a href="/team/WebTC">WebTC Team</a>
+<a href="/documentation">📚 Documentation</a>
+{% endblock %}
 
-        .comparison-grid .card h2 {
-            margin-top: 0;
-            margin-bottom: 15px;
-        }
-
-        .comparison-grid .card > div[id$="-comparison"] {
-            width: 100%;
-            max-width: 600px;
-            height: 400px;
-            margin: 0 auto;
-        }
-
-        /* Responsive design for smaller screens */
-        @media (max-width: 1200px) {
-            .comparison-grid { grid-template-columns: 1fr; }
-        }
-
-        @media (max-width: 768px) {
-            .card { padding: 15px; }
-            h1 { font-size: 1.8em; }
-            .nav a { display: block; margin: 10px 0; }
-        }
-        th, td {
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-        th {
-            background: var(--bg-tertiary);
-            font-weight: 600;
-        }
-        .team-native { color: var(--accent-primary); font-weight: 600; }
-        .team-webtc { color: var(--accent-secondary); font-weight: 600; }
-        .winner {
-            background: var(--success);
-            color: white;
-        }
-    </style>
-</head>
-<body>
-    <button onclick="toggleTheme()" class="theme-toggle">🌙 Dark Mode</button>
-    <div class="container">
-        <header>
-            <h1>Team Comparison</h1>
-            <p class="subtitle">Last updated: {{ updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-            <p class="subtitle" style="margin-top: 8px;">
-                📅 Team Metrics: Last {{ days_back }} days | 👤 Person Metrics: Last 90 days
-            </p>
-            <div class="nav">
-                <a href="/">← Home</a>
-                <a href="/team/Native">Native Team</a>
-                <a href="/team/WebTC">WebTC Team</a>
-                <a href="/documentation">📚 Documentation</a>
-            </div>
-        </header>
-
-        <div class="card">
+{% block main_content %}
+<div class="card">
             <h2>GitHub Metrics Comparison</h2>
             <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
                 Side-by-side comparison of GitHub activity metrics between teams. The winning team for each metric is highlighted in green.
@@ -556,8 +483,8 @@
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Created',
-                        line: {color: '#3498db', width: 2},
-                        marker: {color: '#3498db', size: 6},
+                        line: {color: CHART_COLORS.CREATED, width: 2},
+                        marker: {color: CHART_COLORS.CREATED, size: 6},
                         xaxis: 'x',
                         yaxis: 'y'
                     },
@@ -567,8 +494,8 @@
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Resolved',
-                        line: {color: '#9b59b6', width: 2},
-                        marker: {color: '#9b59b6', size: 6},
+                        line: {color: CHART_COLORS.RESOLVED, width: 2},
+                        marker: {color: CHART_COLORS.RESOLVED, size: 6},
                         xaxis: 'x',
                         yaxis: 'y'
                     },
@@ -578,8 +505,8 @@
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Net (Created - Resolved)',
-                        line: {color: '#e67e22', width: 2},
-                        marker: {color: '#e67e22', size: 6},
+                        line: {color: CHART_COLORS.NET, width: 2},
+                        marker: {color: CHART_COLORS.NET, size: 6},
                         xaxis: 'x2',
                         yaxis: 'y2'
                     }
@@ -664,5 +591,4 @@
         {% endif %}
         {% endfor %}
     </div>
-</body>
-</html>
+{% endblock %}

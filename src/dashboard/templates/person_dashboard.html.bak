@@ -1,53 +1,56 @@
-{% extends "detail_page.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ username }} - Metrics Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
+</head>
+<body>
+    <button onclick="toggleTheme()" class="theme-toggle">🌙 Dark Mode</button>
+    <div class="container">
+        <header>
+            <h1>{{ username }}</h1>
+            {% if team_name %}
+            <p class="subtitle">Team: {{ team_name }}</p>
+            {% endif %}
+            <p class="subtitle">Period: {{ person_data.period.start[:10] if person_data.period.start else 'N/A' }} to {{ person_data.period.end[:10] if person_data.period.end else 'N/A' }}</p>
+            <p class="subtitle">Last updated: {{ updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
 
-{% block title %}{{ username }} - Metrics{% endblock %}
-{% block page_title %}{{ username }} - Metrics{% endblock %}
+            <!-- Date Range Selector -->
+            <div class="date-selector" style="text-align: center; margin: 20px 0;">
+                <label for="period-select" style="margin-right: 10px; font-weight: 600; color: var(--text-primary);">Select Period:</label>
+                <select id="period-select" onchange="changePeriod()" style="padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px;">
+                    <option value="30d" {% if period == '30d' %}selected{% endif %}>Last 30 Days</option>
+                    <option value="90d" {% if period == '90d' %}selected{% endif %}>Last 90 Days</option>
+                    <option value="180d" {% if period == '180d' %}selected{% endif %}>Last 180 Days</option>
+                    <option value="365d" {% if period == '365d' %}selected{% endif %}>Last 365 Days</option>
+                    <option value="Q1-2025" {% if period == 'Q1-2025' %}selected{% endif %}>Q1 2025</option>
+                    <option value="Q2-2025" {% if period == 'Q2-2025' %}selected{% endif %}>Q2 2025</option>
+                    <option value="Q3-2025" {% if period == 'Q3-2025' %}selected{% endif %}>Q3 2025</option>
+                    <option value="Q4-2025" {% if period == 'Q4-2025' %}selected{% endif %}>Q4 2025</option>
+                </select>
+            </div>
 
-{% block header_title %}{{ username }}{% endblock %}
+            <script>
+            function changePeriod() {
+                const period = document.getElementById('period-select').value;
+                const url = new URL(window.location);
+                url.searchParams.set('period', period);
+                window.location.href = url.toString();
+            }
+            </script>
 
-{% block header_subtitle %}
-{% if team_name %}
-<p class="subtitle">Team: {{ team_name }}</p>
-{% endif %}
-<p class="subtitle">Period: {{ person_data.period.start[:10] if person_data.period.start else 'N/A' }} to {{ person_data.period.end[:10] if person_data.period.end else 'N/A' }}</p>
-{% endblock %}
-
-{% block header_meta %}
-<!-- Date Range Selector -->
-<div class="date-selector" style="text-align: center; margin: 20px 0;">
-    <label for="period-select" style="margin-right: 10px; font-weight: 600; color: var(--text-primary);">Select Period:</label>
-    <select id="period-select" onchange="changePeriod()" style="padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px;">
-        <option value="30d" {% if period == '30d' %}selected{% endif %}>Last 30 Days</option>
-        <option value="90d" {% if period == '90d' %}selected{% endif %}>Last 90 Days</option>
-        <option value="180d" {% if period == '180d' %}selected{% endif %}>Last 180 Days</option>
-        <option value="365d" {% if period == '365d' %}selected{% endif %}>Last 365 Days</option>
-        <option value="Q1-2025" {% if period == 'Q1-2025' %}selected{% endif %}>Q1 2025</option>
-        <option value="Q2-2025" {% if period == 'Q2-2025' %}selected{% endif %}>Q2 2025</option>
-        <option value="Q3-2025" {% if period == 'Q3-2025' %}selected{% endif %}>Q3 2025</option>
-        <option value="Q4-2025" {% if period == 'Q4-2025' %}selected{% endif %}>Q4 2025</option>
-    </select>
-</div>
-{% endblock %}
-
-{% block additional_nav %}
-{% if team_name %}
-<a href="/team/{{ team_name }}">{{ team_name }} Team</a>
-{% endif %}
-<a href="/documentation">📚 Documentation</a>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-function changePeriod() {
-    const period = document.getElementById('period-select').value;
-    const url = new URL(window.location);
-    url.searchParams.set('period', period);
-    window.location.href = url.toString();
-}
-</script>
-{% endblock %}
-
-{% block main_content %}
+            <div class="nav">
+                <a href="/">← Home</a>
+                {% if team_name %}
+                <a href="/team/{{ team_name }}">{{ team_name }} Team</a>
+                {% endif %}
+                <a href="/documentation">📚 Documentation</a>
+            </div>
+        </header>
 
         <h2 class="section-title">GitHub Activity</h2>
         <div class="metrics-grid">
@@ -405,4 +408,3 @@ function changePeriod() {
     </div>
 </body>
 </html>
-{% endblock %}
