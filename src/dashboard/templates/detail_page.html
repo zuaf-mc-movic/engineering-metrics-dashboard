@@ -6,16 +6,18 @@
 
 {% block header %}
 <header>
-    <h1>{% block header_title %}Detail Page{% endblock %}</h1>
+    <h1 style="text-align: center;">{% block header_title %}Detail Page{% endblock %}</h1>
 
     {% block header_subtitle %}
-    <div class="header-info-container" style="margin-bottom: 20px;">
-        <div class="timestamp" style="margin-bottom: 5px;">
+    <div class="header-info-container" style="text-align: center; margin-bottom: 20px;">
+        <div class="timestamp" style="margin-bottom: 10px;">
             Last updated: {{ updated_at.strftime('%Y-%m-%d %H:%M:%S') if updated_at else 'N/A' }}
         </div>
-        {% block period_info %}
-        {# Concrete templates can override this to show their specific period info #}
-        {% endblock %}
+        <div class="timestamp" style="margin-top: 10px;">
+            {% block period_info %}
+            {# Concrete templates can override this to show their specific period info #}
+            {% endblock %}
+        </div>
     </div>
     {% endblock %}
 
