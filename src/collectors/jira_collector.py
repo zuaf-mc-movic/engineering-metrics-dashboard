@@ -11,10 +11,23 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class JiraCollector:
     def __init__(self, server: str, username: str, api_token: str,
                  project_keys: List[str], team_members: List[str] = None, days_back: int = 90,
-                 verify_ssl: bool = True):
+                 verify_ssl: bool = True, timeout: int = 120):
+        """Initialize Jira collector
+
+        Args:
+            server: Jira server URL
+            username: Jira username (used for logging)
+            api_token: Jira API token/Bearer token
+            project_keys: List of project keys to collect from
+            team_members: List of team member usernames
+            days_back: Number of days to look back
+            verify_ssl: Whether to verify SSL certificates
+            timeout: Request timeout in seconds (default: 120)
+        """
         options = {
             'server': server,
             'verify': verify_ssl,
+            'timeout': timeout,  # Add configurable timeout
             'headers': {'Authorization': f'Bearer {api_token}'}
         }
         self.jira = JIRA(options=options)
@@ -44,7 +57,7 @@ class JiraCollector:
         issues = []
 
         # Build JQL query with team member filter if specified
-        jql = f'project = {project_key} AND updated >= -{self.days_back}d'
+        jql = f'project = {project_key} AND (created >= -{self.days_back}d OR resolved >= -{self.days_back}d OR (statusCategory != Done AND updated >= -{self.days_back}d))'
         if self.team_members:
             members_str = ', '.join(self.team_members)
             jql += f' AND (assignee in ({members_str}) OR reporter in ({members_str}))'
@@ -159,12 +172,13 @@ class JiraCollector:
 
         return worklogs
 
-    def collect_person_issues(self, jira_username: str, days_back: int = 90) -> List[Dict]:
+    def collect_person_issues(self, jira_username: str, days_back: int = 90, expand_changelog: bool = True) -> List[Dict]:
         """Collect all Jira issues for a specific person.
 
         Args:
             jira_username: Jira username (assignee)
             days_back: Number of days to look back (default: 90)
+            expand_changelog: Whether to expand changelog (default: True, can cause timeouts)
 
         Returns:
             List of issue dictionaries with all fields
@@ -174,15 +188,17 @@ class JiraCollector:
         try:
             # Build JQL to find all issues assigned to this person
             # Use created/resolved/updated to capture:
-            # - New issues created recently
-            # - Old issues resolved recently
-            # - Issues still in progress
-            jql = f'assignee = "{jira_username}" AND (created >= -{days_back}d OR resolved >= -{days_back}d OR updated >= -{days_back}d) ORDER BY updated DESC'
+            # - New issues created recently (created >= -Xd)
+            # - Old issues resolved recently (resolved >= -Xd)
+            # - Issues still in progress (statusCategory != Done AND updated >= -Xd)
+            # Note: Filtering 'updated' to non-Done items prevents noise from bulk administrative updates
+            jql = f'assignee = "{jira_username}" AND (created >= -{days_back}d OR resolved >= -{days_back}d OR (statusCategory != Done AND updated >= -{days_back}d)) ORDER BY updated DESC'
 
             print(f"  Querying Jira for {jira_username}: {jql}")
 
-            # Execute query with changelog for status transitions
-            jira_issues = self.jira.search_issues(jql, maxResults=1000, expand='changelog')
+            # Execute query with optional changelog for status transitions
+            expand = 'changelog' if expand_changelog else None
+            jira_issues = self.jira.search_issues(jql, maxResults=1000, expand=expand)
 
             for issue in jira_issues:
                 issue_data = {

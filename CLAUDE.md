@@ -26,17 +26,14 @@ cp config/config.example.yaml config/config.yaml
 
 ### Data Collection
 ```bash
-# Collect metrics (takes 15-30 minutes, caches to data/metrics_cache.pkl)
+# Collect metrics for last 90 days (takes 15-30 minutes, caches to data/metrics_cache.pkl)
 python collect_data.py
-
-# Collect for specific time period
-python collect_data.py --period Q1-2025
-python collect_data.py --period 90d
-python collect_data.py --start-date 2025-01-01 --end-date 2025-03-31
 
 # List available Jira filters (utility to find filter IDs)
 python list_jira_filters.py
 ```
+
+**Note**: All metrics use a fixed 90-day rolling window. To change this, edit the `DAYS_BACK` constant in `collect_data.py`.
 
 ### Running the Dashboard
 ```bash
@@ -156,7 +153,7 @@ pytest -m "not slow"
 **Models** (`src/models/`):
 - `metrics.py` - `MetricsCalculator` class processes raw data into metrics
   - `calculate_team_metrics()` - Team-level aggregations with Jira filters
-  - `calculate_person_metrics()` - Individual contributor metrics (365-day rolling window)
+  - `calculate_person_metrics()` - Individual contributor metrics (90-day rolling window)
   - `calculate_team_comparison()` - Cross-team comparison data
 
 **Configuration** (`src/config.py`):
@@ -193,11 +190,16 @@ jira:
 teams:
   - name: "Backend"
     display_name: "Backend Team"
+    members:
+      - name: "John Doe"
+        github: "johndoe"
+        jira: "jdoe"
+      - name: "Jane Smith"
+        github: "janesmith"
+        jira: "jsmith"
     github:
       team_slug: "backend-team"
-      members: ["user1", "user2"]
     jira:
-      members: ["jira.user1", "jira.user2"]
       filters:
         wip: 12345
         completed_12weeks: 12346
@@ -220,9 +222,9 @@ teams:
 
 ### Metrics Time Windows
 
-- **Team metrics**: Configurable via `days_back` (default: 90 days) or period flags
-- **Person metrics**: Fixed 365-day rolling window for consistent comparison
-- **Jira metrics**: Team-specific filters define time ranges
+- **All metrics (Team, Person)**: Fixed 90-day rolling window (default)
+- **Time window control**: Edit `DAYS_BACK` constant in `collect_data.py` line 19
+- **Jira metrics**: Team-specific filters define their own time ranges
 
 ## UI Architecture
 
@@ -300,6 +302,13 @@ const CHART_COLORS = {
 - Filter IDs are specific to each Jira instance - use `list_jira_filters.py` to discover
 - Filters define team metrics (WIP, bugs, throughput, etc.)
 
+**Jira Query Optimization (Anti-Noise Filtering):**
+- Person queries filter `updated >= -90d` to only apply to non-Done tickets
+- Query: `assignee = "user" AND (created >= -90d OR resolved >= -90d OR (statusCategory != Done AND updated >= -90d))`
+- **Rationale**: Prevents bulk administrative updates (e.g., mass label changes) from polluting results with thousands of closed tickets
+- Only captures actual work: new issues, resolved issues, and active WIP (not closed items with label updates)
+- See `src/collectors/jira_collector.py:60` (project query) and `:195` (person query)
+
 ### Cache Management
 - Pickle format: `{'teams': {...}, 'persons': {...}, 'comparison': {...}, 'timestamp': datetime}`
 - Dashboard checks cache age (default: 60 min) before auto-refresh
@@ -346,7 +355,17 @@ curl -H "Authorization: Bearer YOUR_TOKEN" -k \
 3. Run `collect_data.py` to collect team data
 4. Team automatically appears in dashboard
 
-**Changing time periods**:
-- Team metrics: Modify `config.yaml` `days_back` or use `--period` flag
-- Person metrics: Hardcoded to 365 days in `collect_data.py` line 246
-- To change person window: Edit `days_back=365` in the person collection loop
+## Time Periods
+
+**All metrics use a fixed 90-day rolling window**:
+- Team metrics: Last 90 days
+- Person metrics: Last 90 days
+- Jira metrics: Last 90 days (via filters or direct queries)
+
+The 90-day window is hardcoded via the `DAYS_BACK = 90` constant in `collect_data.py` (line 19).
+To change this, edit the constant and re-run data collection.
+
+**Previous behavior** (removed for simplicity):
+- Team metrics previously supported `--period` flags (90d, Q1-2025, etc.)
+- Person metrics previously had a UI period selector
+- These features have been removed to ensure consistency across all dashboards
