@@ -333,7 +333,7 @@ class MetricsCalculator:
                 created_date = issue.get('created')
                 if created_date:
                     try:
-                        created_dt = pd.to_datetime(created_date)
+                        created_dt = pd.to_datetime(created_date, utc=True)
                         if created_dt >= ninety_days_ago:
                             week = created_dt.strftime('%Y-W%U')
                             bugs_by_week_created[week] = bugs_by_week_created.get(week, 0) + 1
@@ -345,7 +345,7 @@ class MetricsCalculator:
                 resolved_date = issue.get('resolved')
                 if resolved_date:
                     try:
-                        resolved_dt = pd.to_datetime(resolved_date)
+                        resolved_dt = pd.to_datetime(resolved_date, utc=True)
                         if resolved_dt >= ninety_days_ago:
                             week = resolved_dt.strftime('%Y-W%U')
                             bugs_by_week_resolved[week] = bugs_by_week_resolved.get(week, 0) + 1
@@ -370,7 +370,7 @@ class MetricsCalculator:
                     created_date = issue.get('created')
                     if created_date:
                         try:
-                            created_dt = pd.to_datetime(created_date)
+                            created_dt = pd.to_datetime(created_date, utc=True)
                             if created_dt >= ninety_days_ago:
                                 week = created_dt.strftime('%Y-W%U')
                                 scope_by_week_created[week] = scope_by_week_created.get(week, 0) + 1
@@ -380,7 +380,7 @@ class MetricsCalculator:
                     resolved_date = issue.get('resolved')
                     if resolved_date:
                         try:
-                            resolved_dt = pd.to_datetime(resolved_date)
+                            resolved_dt = pd.to_datetime(resolved_date, utc=True)
                             if resolved_dt >= ninety_days_ago:
                                 week = resolved_dt.strftime('%Y-W%U')
                                 scope_by_week_resolved[week] = scope_by_week_resolved.get(week, 0) + 1
@@ -454,7 +454,7 @@ class MetricsCalculator:
             if not jira_df.empty:
                 # Convert resolved dates to datetime for comparison
                 if 'resolved' in jira_df.columns and start_date:
-                    jira_df['resolved'] = pd.to_datetime(jira_df['resolved'], errors='coerce')
+                    jira_df['resolved'] = pd.to_datetime(jira_df['resolved'], errors='coerce', utc=True)
 
                 # Filter resolved issues to only those resolved in the time window
                 if start_date:
