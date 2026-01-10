@@ -183,3 +183,88 @@ class TestJiraCollector:
 
         # Assert
         assert len(issue['changelog']['histories']) == 0
+
+    def test_collect_person_issues_jql_includes_statusCategory_filter(self):
+        """Verify JQL query filters updated field to non-Done items only"""
+        from unittest.mock import patch, MagicMock
+        from src.collectors.jira_collector import JiraCollector
+
+        # Arrange
+        with patch('src.collectors.jira_collector.JIRA') as mock_jira_class:
+            mock_jira_instance = MagicMock()
+            mock_jira_class.return_value = mock_jira_instance
+            mock_jira_instance.search_issues.return_value = []
+
+            collector = JiraCollector(
+                server="https://jira.test.com",
+                username="testuser",
+                api_token="token123",
+                project_keys=["TEST"],
+                verify_ssl=False
+            )
+
+            # Act
+            collector.collect_person_issues("testuser", days_back=90, expand_changelog=False)
+
+            # Assert - Verify JQL contains statusCategory filter
+            mock_jira_instance.search_issues.assert_called_once()
+            called_jql = mock_jira_instance.search_issues.call_args[0][0]
+
+            assert 'statusCategory != Done' in called_jql
+            assert 'updated >= -90d' in called_jql
+            assert 'created >= -90d' in called_jql
+            assert 'resolved >= -90d' in called_jql
+
+    def test_collect_person_issues_jql_structure(self):
+        """Verify JQL query has correct OR structure with nested AND"""
+        from unittest.mock import patch, MagicMock
+        from src.collectors.jira_collector import JiraCollector
+
+        # Arrange
+        with patch('src.collectors.jira_collector.JIRA') as mock_jira_class:
+            mock_jira_instance = MagicMock()
+            mock_jira_class.return_value = mock_jira_instance
+            mock_jira_instance.search_issues.return_value = []
+
+            collector = JiraCollector(
+                server="https://jira.test.com",
+                username="testuser",
+                api_token="token123",
+                project_keys=["TEST"],
+                verify_ssl=False
+            )
+
+            # Act
+            collector.collect_person_issues("testuser", days_back=90, expand_changelog=False)
+
+            # Assert - Verify parentheses structure
+            called_jql = mock_jira_instance.search_issues.call_args[0][0]
+            assert '(created >= -90d OR resolved >= -90d OR (statusCategory != Done AND updated >= -90d))' in called_jql
+            assert 'assignee = "testuser"' in called_jql
+
+    def test_collect_issue_metrics_jql_includes_statusCategory_filter(self):
+        """Verify project query also filters by statusCategory"""
+        from unittest.mock import patch, MagicMock
+        from src.collectors.jira_collector import JiraCollector
+
+        # Arrange
+        with patch('src.collectors.jira_collector.JIRA') as mock_jira_class:
+            mock_jira_instance = MagicMock()
+            mock_jira_class.return_value = mock_jira_instance
+            mock_jira_instance.search_issues.return_value = []
+
+            collector = JiraCollector(
+                server="https://jira.test.com",
+                username="testuser",
+                api_token="token123",
+                project_keys=["TEST"],
+                verify_ssl=False
+            )
+
+            # Act
+            collector.collect_issue_metrics("TESTPROJECT")
+
+            # Assert - Verify JQL contains statusCategory filter
+            called_jql = mock_jira_instance.search_issues.call_args[0][0]
+            assert 'statusCategory != Done' in called_jql
+            assert 'project = TESTPROJECT' in called_jql

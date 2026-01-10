@@ -132,3 +132,40 @@ class TestGitHubGraphQLCollector:
         assert pr['mergedAt'] is None
         assert pr['additions'] == 0
         assert len(pr['reviews']['nodes']) == 0
+
+    def test_collect_repository_metrics_uses_created_at_ordering(self):
+        """Verify PRs are ordered by CREATED_AT, not UPDATED_AT"""
+        from unittest.mock import patch, MagicMock
+        from src.collectors.github_graphql_collector import GitHubGraphQLCollector
+
+        # Arrange
+        collector = GitHubGraphQLCollector(
+            token="test_token",
+            organization="test-org",
+            teams=["test-team"]
+        )
+
+        # Mock empty response to avoid processing logic
+        empty_response = {
+            "repository": {
+                "pullRequests": {
+                    "nodes": [],
+                    "pageInfo": {
+                        "hasNextPage": False,
+                        "endCursor": None
+                    }
+                }
+            }
+        }
+
+        # Act & Assert
+        with patch.object(collector, '_execute_query', return_value=empty_response) as mock_query:
+            collector._collect_repository_metrics("owner", "repo")
+
+            # Verify query was called
+            mock_query.assert_called()
+
+            # Verify query structure
+            called_query = mock_query.call_args[0][0]
+            assert 'orderBy: {field: CREATED_AT, direction: DESC}' in called_query
+            assert 'UPDATED_AT' not in called_query
