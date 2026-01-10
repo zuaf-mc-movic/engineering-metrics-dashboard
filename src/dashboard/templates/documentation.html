@@ -5,6 +5,10 @@
 
 {% block header_title %}📚 Documentation & FAQ{% endblock %}
 
+{% block breadcrumb_items %}
+<a href="/documentation">Documentation</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .faq-section {
@@ -115,10 +119,30 @@
             <div class="faq-answer">
                 Jira issues are fetched using JQL queries with date filtering:
                 <ul>
-                    <li><strong>Completed</strong>: Issues with resolution date within the 90-day window</li>
+                    <li><strong>Completed</strong>: Issues with resolution date within the configured time period</li>
                     <li><strong>In Progress</strong>: Issues currently unresolved (no resolution date)</li>
                     <li>Issues must be assigned to the team member's Jira username</li>
                 </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How does the system filter out noise from administrative updates?</div>
+            <div class="faq-answer">
+                The system uses optimized Jira queries to prevent bulk administrative operations (like mass label updates) from polluting metrics:
+                <ul>
+                    <li><strong>Query Logic</strong>: <code>assignee = "user" AND (created >= -90d OR resolved >= -90d OR (statusCategory != Done AND updated >= -90d))</code></li>
+                    <li><strong>What it captures</strong>:
+                        <ul>
+                            <li>New issues created in last 90 days</li>
+                            <li>Old issues resolved in last 90 days</li>
+                            <li>Active work (statusCategory != Done) updated in last 90 days</li>
+                        </ul>
+                    </li>
+                    <li><strong>What it filters out</strong>: Closed/Done tickets that only had administrative updates (labels, comments, attachments)</li>
+                    <li><strong>Why it matters</strong>: A bulk label update on 5,000+ closed tickets won't pollute your metrics anymore</li>
+                </ul>
+                This ensures cleaner metrics and better query performance while maintaining 100% accuracy for actual work.
             </div>
         </div>
 
@@ -195,11 +219,14 @@
         <div class="faq-answer">
             Different dashboards use different time windows:
             <ul>
-                <li><strong>Team Metrics</strong>: Last 90 days (configurable via <code>days_back</code> in config.yaml)</li>
-                <li><strong>Person Metrics</strong>: Last 90 days by default (can be changed with period selector)</li>
-                <li><strong>Jira Throughput</strong>: Last 12 weeks (84 days)</li>
+                <li><strong>All Metrics (Team, Person, GitHub, Jira)</strong>: Fixed 90-day rolling window</li>
+                <li><strong>Jira Throughput</strong>: Last 12 weeks (84 days) - calculated from completed issues</li>
                 <li><strong>Jira Trends</strong>: Last 90 days for bugs/scope charts</li>
             </ul>
+            <p style="margin-top: 10px;">
+                <strong>Note:</strong> All metrics use a consistent 90-day window defined by the <code>DAYS_BACK</code> constant in the collection script.
+                This ensures fair comparison across teams and individuals.
+            </p>
         </div>
     </div>
 
@@ -295,13 +322,17 @@
     <div class="faq-item">
         <div class="faq-question">Can I change the time window?</div>
         <div class="faq-answer">
-            Yes, for team metrics:
+            To change the collection time window:
             <ul>
-                <li>Edit <code>days_back</code> in <code>config/config.yaml</code></li>
-                <li>Or use <code>--period</code> flag: <code>python collect_data.py --period 30d</code></li>
-                <li>Or use <code>--start-date</code> and <code>--end-date</code> flags</li>
+                <li>Edit the <code>DAYS_BACK</code> constant in <code>collect_data.py</code> (line 19)</li>
+                <li>Default is 90 days - change to any value (e.g., 30, 60, 180)</li>
+                <li>Re-run data collection: <code>python collect_data.py</code></li>
+                <li>Restart the dashboard to load new data</li>
             </ul>
-            Person metrics are fixed at 90 days (can be changed via period selector on person page).
+            <p style="margin-top: 10px;">
+                <strong>Note:</strong> All metrics (team, person, Jira) will use the same time window.
+                There is no per-dashboard or per-person time window selection in the UI.
+            </p>
         </div>
     </div>
 
@@ -386,6 +417,22 @@
             </ul>
             <strong>Trend Charts:</strong> Top panel shows created vs resolved, bottom panel shows net difference.<br>
             <strong>Tip:</strong> Positive net difference (blue trending up) indicates backlog growth; negative indicates backlog reduction.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question">👥 How do I compare team members?</div>
+        <div class="faq-answer">
+            View side-by-side comparison of all team members:
+            <ul>
+                <li>Navigate to a team dashboard (click on team card from homepage)</li>
+                <li>Open the hamburger menu (☰ icon in the breadcrumbs bar)</li>
+                <li>Click "👥 Compare Members"</li>
+                <li>See leaderboard with top performers (🥇🥈🥉 badges)</li>
+                <li>View detailed metrics table with best values highlighted in green</li>
+                <li>Compare PRs, reviews, commits, Jira metrics, and more</li>
+            </ul>
+            Performance scores are calculated using weighted averages of normalized metrics.
         </div>
     </div>
 </div>
