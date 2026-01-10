@@ -13,12 +13,24 @@ import pandas as pd
 
 class GitHubGraphQLCollector:
     def __init__(self, token: str, organization: str = None, teams: List[str] = None,
-                 team_members: List[str] = None, days_back: int = 90):
+                 team_members: List[str] = None, days_back: int = 90,
+                 max_pages_per_repo: int = 5):
+        """Initialize GitHub GraphQL collector
+
+        Args:
+            token: GitHub personal access token
+            organization: GitHub organization name
+            teams: List of team slugs to collect from
+            team_members: List of GitHub usernames to filter by
+            days_back: Number of days to look back (default: 90)
+            max_pages_per_repo: Max pages to fetch per repo (default: 5, 50 PRs per page)
+        """
         self.token = token
         self.organization = organization
         self.teams = teams or []
         self.team_members = team_members or []
         self.days_back = days_back
+        self.max_pages_per_repo = max_pages_per_repo
         self.since_date = datetime.now(timezone.utc) - timedelta(days=days_back)
         self.api_url = "https://api.github.com/graphql"
         self.headers = {
@@ -169,7 +181,7 @@ class GitHubGraphQLCollector:
         query = """
         query($owner: String!, $name: String!, $cursor: String) {
           repository(owner: $owner, name: $name) {
-            pullRequests(first: 50, orderBy: {field: UPDATED_AT, direction: DESC}, after: $cursor) {
+            pullRequests(first: 50, orderBy: {field: CREATED_AT, direction: DESC}, after: $cursor) {
               nodes {
                 number
                 title
@@ -232,9 +244,14 @@ class GitHubGraphQLCollector:
         reviews = []
         commits_data = []
 
+        # Stats tracking
+        total_prs_fetched = 0
+        total_prs_filtered_out = 0
+        hit_page_limit = False
+
         cursor = None
         page_count = 0
-        max_pages = 5  # Limit pages to avoid excessive API calls
+        max_pages = self.max_pages_per_repo
 
         while page_count < max_pages:
             try:
@@ -250,14 +267,20 @@ class GitHubGraphQLCollector:
                 pr_data = data["repository"]["pullRequests"]
                 prs = pr_data["nodes"]
 
+                prs_in_date_range_on_this_page = 0
+
                 for pr in prs:
-                    # Skip PRs updated before our since_date
-                    pr_updated = datetime.fromisoformat(pr["createdAt"].replace('Z', '+00:00'))
-                    if pr_updated < self.since_date:
+                    total_prs_fetched += 1
+
+                    # Skip PRs created before our since_date
+                    pr_created = datetime.fromisoformat(pr["createdAt"].replace('Z', '+00:00'))
+                    if pr_created < self.since_date:
+                        total_prs_filtered_out += 1
                         continue
 
+                    prs_in_date_range_on_this_page += 1
+
                     pr_author = pr["author"]["login"] if pr["author"] else "unknown"
-                    pr_created = datetime.fromisoformat(pr["createdAt"].replace('Z', '+00:00'))
 
                     # Calculate cycle time
                     cycle_time_hours = None
@@ -338,6 +361,11 @@ class GitHubGraphQLCollector:
                                 'pr_created_at': pr_created
                             })
 
+                # Early termination: if no PRs in date range on this page, stop paginating
+                if prs_in_date_range_on_this_page == 0:
+                    print(f"  No more PRs in date range, stopping pagination at page {page_count + 1}")
+                    break
+
                 if not pr_data["pageInfo"]["hasNextPage"]:
                     break
 
@@ -347,6 +375,15 @@ class GitHubGraphQLCollector:
             except Exception as e:
                 print(f"  Error in pagination: {e}")
                 break
+
+        # Check if we hit the page limit
+        if page_count >= max_pages and pr_data.get("pageInfo", {}).get("hasNextPage"):
+            hit_page_limit = True
+
+        # Log stats
+        print(f"  Fetched {total_prs_fetched} PRs, filtered out {total_prs_filtered_out} (outside date range)")
+        if hit_page_limit:
+            print(f"  ⚠️  WARNING: Hit {max_pages}-page limit. Some PRs may be missing!")
 
         # Deduplicate commits (same commit can be in multiple PRs)
         seen_shas = set()
@@ -366,95 +403,6 @@ class GitHubGraphQLCollector:
             'commits': unique_commits
         }
 
-    def _collect_commits_graphql(self, owner: str, repo_name: str) -> List[Dict]:
-        """Collect commits using GraphQL"""
-        since_iso = self.since_date.isoformat()
-
-        query = """
-        query($owner: String!, $name: String!, $since: GitTimestamp!, $cursor: String) {
-          repository(owner: $owner, name: $name) {
-            defaultBranchRef {
-              target {
-                ... on Commit {
-                  history(first: 100, since: $since, after: $cursor) {
-                    nodes {
-                      oid
-                      author {
-                        user {
-                          login
-                        }
-                        name
-                        date
-                      }
-                      message
-                      additions
-                      deletions
-                    }
-                    pageInfo {
-                      hasNextPage
-                      endCursor
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-        """
-
-        commits = []
-        cursor = None
-        page_count = 0
-        max_pages = 3  # Limit commits to 300 max
-
-        while page_count < max_pages:
-            try:
-                data = self._execute_query(query, {
-                    "owner": owner,
-                    "name": repo_name,
-                    "since": since_iso,
-                    "cursor": cursor
-                })
-
-                if not data.get("repository") or not data["repository"].get("defaultBranchRef"):
-                    break
-
-                target = data["repository"]["defaultBranchRef"]["target"]
-                if not target or "history" not in target:
-                    break
-
-                history = target["history"]
-                commit_nodes = history["nodes"]
-
-                for commit in commit_nodes:
-                    author_login = "unknown"
-                    if commit["author"]["user"]:
-                        author_login = commit["author"]["user"]["login"]
-                    elif commit["author"]["name"]:
-                        author_login = commit["author"]["name"]
-
-                    commits.append({
-                        'repo': f"{owner}/{repo_name}",
-                        'sha': commit["oid"],
-                        'author': author_login,
-                        'date': datetime.fromisoformat(commit["author"]["date"].replace('Z', '+00:00')),
-                        'message': commit["message"].split('\n')[0],
-                        'additions': commit["additions"],
-                        'deletions': commit["deletions"],
-                        'total_changes': commit["additions"] + commit["deletions"]
-                    })
-
-                if not history["pageInfo"]["hasNextPage"]:
-                    break
-
-                cursor = history["pageInfo"]["endCursor"]
-                page_count += 1
-
-            except Exception as e:
-                print(f"  Error collecting commits: {e}")
-                break
-
-        return commits
 
     def collect_team_metrics(self, team_name: str, team_members: List[str],
                            start_date: datetime = None, end_date: datetime = None):
