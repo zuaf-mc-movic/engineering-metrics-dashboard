@@ -38,42 +38,63 @@ jira:
 #
 # Member Format Options:
 # ----------------------
-# Option 1 (Old format): Separate github.members and jira.members lists
-#   - Members are matched by index (first GitHub member = first Jira member)
+# Option 1 (Simple format): List of username strings
+#   - Just GitHub usernames as strings
+#   - Members are matched by index with Jira members
 #   - Shown below for the Native team
 #
-# Option 2 (New format): Explicit member mapping with github/jira keys
+# Option 2 (NEW - With display names): List of dicts with username and name
+#   - Supports displaying full names instead of usernames in UI
+#   - Format: - username: "github-username"
+#             name: "Full Name"
+#   - Example shown in comments below
+#
+# Option 3 (Explicit mapping): Member dicts with github/jira keys
 #   - More explicit, safer when GitHub and Jira usernames differ
-#   - Shown below for the WebTC team
 #   - Enables per-person Jira metrics on person dashboard
+#
+# NEW DISPLAY NAME FORMAT (uncomment to use):
+# github:
+#   members:
+#     - username: "daniella-b"
+#       name: "Daniella Barsony"
+#     - username: "bigfoot-goto"
+#       name: "Attila Borsanyi"
 #
 teams:
   - name: "Native"
     display_name: "Native Team"
+    members:
+        - name: "Daniella Barsony"
+          github: "daniella-b"
+          jira: "dbarsony"
+        - name: "Attila Borsanyi-Hortobagyi"
+          github: "bigfoot-goto"
+          jira: "aborsanyihortobagyi"
+        - name: "Laszlo Csanky"
+          github: "lcsanky"
+          jira: "lcsanky"
+        - name: "Zoltan Filyo"
+          github: "goto-balamber"
+          jira: "zfilyo"
+        - name: "Andras Kovacs"
+          github: "andkovacs"
+          jira: "andkovacs"
+        - name: "Aron Armeszaros"
+          github: "armeszaros"
+          jira: "armeszaros"
+        - name: "Gergely Paless"
+          github: "gpaless-goto"
+          jira: "gpaless"
+        - name: "Peter Sari"
+          github: "psari-goto"
+          jira: "psari"
+        - name: "Norbert Toth"
+          github: "norbert-toth-goto"
+          jira: "ntoth"
     github:
       team_slug: "itsg-rescue-native"
-      members:
-        - "daniella-b"
-        - "bigfoot-goto"
-        - "lcsanky"
-        - "goto-balamber"
-        - "andkovacs"
-        - "armeszaros"
-        - "gpaless-goto"
-        - "psari-goto"
-        - "norbert-toth-goto"
     jira:
-      # NOTE: Order must match github.members for proper mapping
-      members:
-        - "dbarsony"
-        - "aborsanyihortobagyi"
-        - "lcsanky"
-        - "zfilyo"
-        - "andkovacs"
-        - "armeszaros"
-        - "gpaless"
-        - "psari"
-        - "ntoth"
       # Filter IDs - run list_jira_filters.py to discover these
       filters:
         backlog_in_progress: 12345  # Replace with actual filter ID
@@ -90,15 +111,20 @@ teams:
     display_name: "WebTC Team"
     # New format: Explicit GitHub/Jira mapping (recommended)
     members:
-      - github: "icsiza"
+      - name: "Istvan Csiza"
+        github: "icsiza"
         jira: "icsiza"
-      - github: "teklavass"
+      - name: "Tekla Patakfalvi"
+        github: "teklavass"
         jira: "tvass"
-      - github: "rgolle"
+      - name: "Robert Golle"
+        github: "rgolle"
         jira: "rgolle"
-      - github: "KrisztianSzabados"
+      - name: "Krisztian Szabados"
+        github: "KrisztianSzabados"
         jira: "kszabados"
-      - github: "bkissbarnabas"
+      - name: "Barnabas Kiss"
+        github: "bkissbarnabas"
         jira: "bkiss"
     github:
       team_slug: "itsg-rescue-webtc"
@@ -114,17 +140,6 @@ teams:
         recently_released: 22351
         scope: 22352
         wip: 22353
-
-# Team member mapping (optional - for cross-platform identity)
-team_members:
-  - github: "username1"
-    jira: "jira-username1"
-    name: "John Doe"
-    team: "Backend"
-  - github: "username2"
-    jira: "jira-username2"
-    name: "Jane Smith"
-    team: "Frontend"
 
 # Time period configurations
 time_periods:

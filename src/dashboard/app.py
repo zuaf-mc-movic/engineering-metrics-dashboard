@@ -59,6 +59,12 @@ def get_config():
     """Load configuration"""
     return Config()
 
+def get_display_name(username, member_names=None):
+    """Get display name for a GitHub username, fallback to username."""
+    if member_names and username in member_names:
+        return member_names[username]
+    return username
+
 def filter_github_data_by_date(raw_data, start_date, end_date):
     """Filter GitHub raw data by date range"""
     filtered = {}
@@ -366,6 +372,28 @@ def api_collect_period(period):
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
+@app.route('/api/reload-cache', methods=['POST'])
+def api_reload_cache():
+    """Reload metrics cache from disk without restarting server"""
+    try:
+        success = load_cache_from_file()
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': 'Cache reloaded successfully',
+                'timestamp': str(metrics_cache['timestamp'])
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to reload cache - file may not exist or be corrupted'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 @app.route('/collect')
 def collect():
     """Trigger collection and redirect to dashboard"""
@@ -398,6 +426,9 @@ def team_dashboard(team_name):
         # Calculate date range for GitHub search links
         start_date = (datetime.now() - timedelta(days=config.days_back)).strftime('%Y-%m-%d')
 
+        # Get member names mapping
+        member_names = cache.get('member_names', {})
+
         # Add Jira data to member_trends from persons cache
         if 'persons' in cache and 'github' in team_data and 'member_trends' in team_data['github']:
             member_trends = team_data['github']['member_trends']
@@ -416,6 +447,7 @@ def team_dashboard(team_name):
                              team_display_name=team_config.get('display_name', team_name) if team_config else team_name,
                              team_data=team_data,
                              team_config=team_config,
+                             member_names=member_names,
                              config=config,
                              days_back=config.days_back,
                              start_date=start_date,
@@ -430,7 +462,7 @@ def team_dashboard(team_name):
 
 @app.route('/person/<username>')
 def person_dashboard(username):
-    """Person-specific dashboard with date filtering and trends"""
+    """Person-specific dashboard showing last 90 days of metrics"""
     config = get_config()
 
     if metrics_cache['data'] is None:
@@ -442,58 +474,26 @@ def person_dashboard(username):
         return render_template('error.html',
                              error="Person dashboards require team configuration. Please update config.yaml and re-run data collection.")
 
-    # Get full person data (90 days)
-    full_person_data = cache['persons'].get(username)
-    if not full_person_data:
+    # Get cached person data (already contains 90-day metrics)
+    person_data = cache['persons'].get(username)
+    if not person_data:
         return render_template('error.html', error=f"No metrics found for user '{username}'")
 
-    # Check if raw data exists (new format) or use cached metrics (old format)
-    if 'raw_github_data' in full_person_data:
-        # New format: Filter raw data by period
-        period = request.args.get('period', '90d')
-
-        from src.utils.time_periods import parse_period_to_dates
-        start_date, end_date = parse_period_to_dates(period)
-
-        # Filter raw GitHub data by date
-        filtered_github_data = filter_github_data_by_date(
-            full_person_data.get('raw_github_data', {}),
-            start_date,
-            end_date
-        )
-
-        # Filter raw Jira data by date (if it exists)
-        filtered_jira_data = filter_jira_data_by_date(
-            full_person_data.get('raw_jira_data', []),
-            start_date,
-            end_date
-        )
-
-        # Recalculate metrics for filtered period
+    # Calculate trends from raw data if available
+    if 'raw_github_data' in person_data and person_data.get('raw_github_data'):
         person_dfs = {
-            'pull_requests': pd.DataFrame(filtered_github_data['pull_requests']),
-            'reviews': pd.DataFrame(filtered_github_data['reviews']),
-            'commits': pd.DataFrame(filtered_github_data['commits'])
+            'pull_requests': pd.DataFrame(person_data['raw_github_data'].get('pull_requests', [])),
+            'reviews': pd.DataFrame(person_data['raw_github_data'].get('reviews', [])),
+            'commits': pd.DataFrame(person_data['raw_github_data'].get('commits', []))
         }
 
         calculator = MetricsCalculator(person_dfs)
-        person_data = calculator.calculate_person_metrics(
-            username=username,
-            github_data=filtered_github_data,
-            jira_data=filtered_jira_data,  # ← Now passing filtered Jira data!
-            start_date=start_date,
-            end_date=end_date
-        )
-
-        # Calculate trends for charts
         person_data['trends'] = calculator.calculate_person_trends(
-            filtered_github_data,
+            person_data['raw_github_data'],
             period='weekly'
         )
     else:
-        # Old format: Use cached metrics (no filtering available)
-        person_data = full_person_data
-        period = '90d'  # Default to 90 days for old data
+        # No raw data available, set empty trends
         person_data['trends'] = {
             'pr_trend': [],
             'review_trend': [],
@@ -501,19 +501,31 @@ def person_dashboard(username):
             'lines_changed_trend': []
         }
 
+    # Get display name from cache
+    member_names = cache.get('member_names', {})
+    display_name = get_display_name(username, member_names)
+
     # Find which team this person belongs to
     team_name = None
     for team in config.teams:
-        if username in team.get('github', {}).get('members', []):
+        # Check new format: members list with github/jira keys
+        if 'members' in team:
+            for member in team.get('members', []):
+                if isinstance(member, dict) and member.get('github') == username:
+                    team_name = team.get('name')
+                    break
+        # Check old format: github.members
+        elif username in team.get('github', {}).get('members', []):
             team_name = team.get('name')
+            break
+        if team_name:
             break
 
     return render_template('person_dashboard.html',
                          username=username,
+                         display_name=display_name,
                          person_data=person_data,
                          team_name=team_name,
-                         period=period,
-                         available_periods=config.time_periods.get('last_n_days', []),
                          github_org=config.github_organization,
                          github_base_url=config.github_base_url,
                          updated_at=metrics_cache['timestamp'])
@@ -536,8 +548,20 @@ def team_members_comparison(team_name):
     if not team_config:
         return render_template('error.html', error=f"Team configuration for '{team_name}' not found")
 
-    # Get all members from team config
-    members = team_config.get('github', {}).get('members', [])
+    # Get all members from team config - support both formats
+    members = []
+    if 'members' in team_config and isinstance(team_config.get('members'), list):
+        # New format: unified members list
+        members = [
+            m.get('github') for m in team_config['members']
+            if isinstance(m, dict) and m.get('github')
+        ]
+    else:
+        # Old format: github.members
+        members = team_config.get('github', {}).get('members', [])
+
+    # Get member names mapping
+    member_names = cache.get('member_names', {})
 
     # Build comparison data
     comparison_data = []
@@ -548,6 +572,7 @@ def team_members_comparison(team_name):
 
         comparison_data.append({
             'username': username,
+            'display_name': get_display_name(username, member_names),
             'prs': github_data.get('prs_created', 0),
             'prs_merged': github_data.get('prs_merged', 0),
             'merge_rate': github_data.get('merge_rate', 0) * 100,
@@ -561,6 +586,25 @@ def team_members_comparison(team_name):
             'jira_wip': jira_data.get('in_progress', 0),
             'jira_cycle_time': jira_data.get('avg_cycle_time', 0)
         })
+
+    # Calculate performance scores for each member
+    for member in comparison_data:
+        member['score'] = MetricsCalculator.calculate_performance_score(member, comparison_data)
+
+    # Sort by score descending
+    comparison_data.sort(key=lambda x: x['score'], reverse=True)
+
+    # Add rank and badges
+    for i, member in enumerate(comparison_data, 1):
+        member['rank'] = i
+        if i == 1:
+            member['badge'] = '🥇'
+        elif i == 2:
+            member['badge'] = '🥈'
+        elif i == 3:
+            member['badge'] = '🥉'
+        else:
+            member['badge'] = ''
 
     return render_template('team_members_comparison.html',
                          team_name=team_name,
@@ -595,10 +639,53 @@ def team_comparison():
     # Calculate date range for GitHub search links
     start_date = (datetime.now() - timedelta(days=config.days_back)).strftime('%Y-%m-%d')
 
+    # Calculate performance scores for teams
+    comparison_data = cache['comparison']
+    team_metrics_list = list(comparison_data.values())
+
+    # Add team sizes and calculate scores with normalization
+    for team_name, metrics in comparison_data.items():
+        team_config = team_configs[team_name]
+        # Get team size - support both formats
+        if 'members' in team_config and isinstance(team_config.get('members'), list):
+            # New format: count members with github field
+            team_size = len([
+                m for m in team_config['members']
+                if isinstance(m, dict) and m.get('github')
+            ])
+        else:
+            # Old format: github.members
+            team_size = len(team_config.get('github', {}).get('members', []))
+        metrics['team_size'] = team_size
+        metrics['score'] = MetricsCalculator.calculate_performance_score(
+            metrics,
+            team_metrics_list,
+            team_size=team_size  # Normalize by team size
+        )
+
+    # Count wins for each team (who has the highest value in each metric)
+    team_wins = {}
+    metrics_to_compare = ['prs', 'reviews', 'commits', 'jira_throughput']
+
+    for metric in metrics_to_compare:
+        max_value = max([m.get(metric, 0) for m in comparison_data.values()])
+        for team_name, metrics in comparison_data.items():
+            if metrics.get(metric, 0) == max_value and max_value > 0:
+                team_wins[team_name] = team_wins.get(team_name, 0) + 1
+
+    # Cycle time: lower is better
+    cycle_times = {team: m.get('avg_cycle_time', 0) for team, m in comparison_data.items() if m.get('avg_cycle_time', 0) > 0}
+    if cycle_times:
+        min_cycle_time = min(cycle_times.values())
+        for team_name, cycle_time in cycle_times.items():
+            if cycle_time == min_cycle_time:
+                team_wins[team_name] = team_wins.get(team_name, 0) + 1
+
     return render_template('comparison.html',
-                         comparison=cache['comparison'],
+                         comparison=comparison_data,
                          teams=cache.get('teams', {}),
                          team_configs=team_configs,
+                         team_wins=team_wins,
                          config=config,
                          github_org=config.github_organization,
                          jira_server=config.jira_config.get('server'),

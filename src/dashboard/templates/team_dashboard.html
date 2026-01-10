@@ -6,7 +6,7 @@
 {% block header_title %}{{ team_display_name }}{% endblock %}
 
 {% block page_description %}
-<div style="font-size: 1.2em; color: var(--text-secondary); margin-bottom: 15px;">
+<div class="page-description">
     Comprehensive Team Performance Analytics
 </div>
 {% endblock %}
@@ -26,11 +26,11 @@
 {% block main_content %}
 <div class="team-dashboard-container">
 
-<h2 style="margin: 30px 0 15px 0; font-size: 24px;">GitHub Metrics</h2>
+<h2 style="margin: 30px 0 15px 0;">GitHub Metrics</h2>
         <div class="metrics-grid">
             <div class="card">
                 <h2>Pull Requests</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Total pull requests created by team members during this period. Represents code contributions and feature development activity.
                 </p>
                 <div class="metric-value">{{ team_data.github.pr_count }}</div>
@@ -38,7 +38,7 @@
             </div>
             <div class="card">
                 <h2>Code Reviews</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Total reviews given by team members on pull requests. High review participation improves code quality and knowledge sharing.
                 </p>
                 <div class="metric-value">{{ team_data.github.review_count }}</div>
@@ -46,7 +46,7 @@
             </div>
             <div class="card">
                 <h2>Commits</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Total commits pushed by team members. Measures overall development activity and code change volume.
                 </p>
                 <div class="metric-value">{{ team_data.github.commit_count }}</div>
@@ -54,7 +54,7 @@
             </div>
             <div class="card">
                 <h2>Avg Cycle Time</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Average time from PR creation to merge across all team PRs. Lower times indicate efficient review processes and faster delivery.
                 </p>
                 <div class="metric-value">{{ "%.1f"|format(team_data.github.avg_cycle_time) }}h</div>
@@ -64,7 +64,7 @@
 
         <div class="card">
             <h2>Team Member Activity</h2>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Individual contribution breakdown showing PRs, reviews, commits, and code changes for each team member during this period.
             </p>
             <div class="member-grid">
@@ -73,7 +73,7 @@
                 <div class="member-card">
                     <div class="member-name">
                         <a href="/person/{{ username }}" class="person-link">{{ display_name }}</a>
-                        <div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 4px;">@{{ username }}</div>
+                        <div class="text-sm" style="color: var(--text-secondary); margin-top: 4px;">@{{ username }}</div>
                     </div>
                     <div class="member-stats">
                         PRs: {{ stats.prs }} | Reviews: {{ stats.reviews }}<br>
@@ -89,7 +89,7 @@
         </div>
 
         {% if team_data.jira %}
-        <h2 style="margin: 40px 0 15px 0; font-size: 24px;">Jira Metrics</h2>
+        <h2 style="margin: 40px 0 15px 0;">Jira Metrics</h2>
 
         {% if team_data.jira.throughput %}
         <div class="metrics-grid">
@@ -104,7 +104,7 @@
                     </a>
                     {% endif %}
                 </h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Average issues completed per week over the last 12 weeks. Measures team velocity and delivery rate.
                 </p>
                 <div class="metric-value">{{ "%.1f"|format(team_data.jira.throughput.weekly_avg) }}</div>
@@ -126,7 +126,7 @@
                     </a>
                     {% endif %}
                 </h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Current number of issues actively being worked on. Lower WIP counts and ages generally lead to faster completion.
                 </p>
                 <div class="metric-value">{{ team_data.jira.wip.count }}</div>
@@ -149,7 +149,7 @@
                     </a>
                     {% endif %}
                 </h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Issues marked as blocked or flagged. These items need attention to remove impediments and maintain flow.
                 </p>
                 <div class="metric-value {% if team_data.jira.flagged.count > 0 %}attention{% endif %}">
@@ -171,7 +171,7 @@
                     </a>
                     {% endif %}
                 </h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Bug tickets created vs resolved. A negative net difference (more resolved than created) indicates improving product quality.
                 </p>
                 <div class="metric-value">{{ team_data.jira.bugs.created }} / {{ team_data.jira.bugs.resolved }}</div>
@@ -186,7 +186,7 @@
         {% if team_data.jira.throughput and team_data.jira.throughput.by_type %}
         <div class="card">
             <h2>Throughput by Issue Type</h2>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Distribution of completed work by issue type over 12 weeks. Shows what types of work the team delivers (features, bugs, tasks, etc.).
             </p>
             <div id="throughput-types-chart" style="height: 400px;"></div>
@@ -220,7 +220,7 @@
         {% if team_data.jira.wip and team_data.jira.wip.age_distribution %}
         <div class="card">
             <h2>WIP Age Distribution</h2>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 How long current WIP items have been in progress. Items in WIP longer may need attention or indicate blockers.
             </p>
             <div id="wip-chart"></div>
@@ -265,7 +265,7 @@
         {% if team_data.jira.wip and team_data.jira.wip.by_status %}
         <div class="card">
             <h2>WIP Items by Status</h2>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Breakdown of current work in progress by status. Helps identify bottlenecks if work piles up in specific statuses.
             </p>
             <div id="wip-status-chart" style="height: 400px;"></div>
@@ -305,7 +305,7 @@
         {% if team_data.jira.bugs %}
         <div class="card">
             <h2>Bugs: Created vs Resolved (Last 90 Days)</h2>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Top: Bug creation vs resolution trends over 90 days. Bottom: Net difference (created minus resolved). Positive net trends indicate bug backlog growth.
             </p>
             {% if team_data.jira.bugs.trend_created %}
@@ -406,7 +406,7 @@
         {% if team_data.jira.scope %}
         <div class="card">
             <h2>Scope: Created vs Resolved (Last 90 Days)</h2>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Top: Scope item creation vs completion over 90 days. Bottom: Net difference. Shows whether scope is growing or being worked down.
             </p>
             {% if team_data.jira.scope.trend_created %}
@@ -515,7 +515,7 @@
                 </a>
                 {% endif %}
             </h2>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Issues currently flagged or blocked, with assignee and days blocked. Prioritize removing blockers to maintain team flow.
             </p>
             <table>

@@ -9,7 +9,7 @@
 
 {% block header_subtitle %}
 <div class="header-info-container" style="text-align: center; margin-bottom: 20px;">
-    <div style="font-size: 1.2em; color: var(--text-secondary); margin-bottom: 15px;">
+    <div class="page-description">
         Multi-Team Performance Tracking
     </div>
     <div class="timestamp" style="margin-bottom: 10px;">
@@ -125,7 +125,7 @@
             <div class="metric">
                 <span class="metric-value">{{ team.pr_count }}</span>
                 <span class="metric-label">Pull Requests</span>
-                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                <p class="helper-text" style="margin: 6px 0 0 0;">
                     Total PRs created during the period
                 </p>
             </div>
@@ -133,7 +133,7 @@
             <div class="metric">
                 <span class="metric-value">{{ team.review_count }}</span>
                 <span class="metric-label">Code Reviews</span>
-                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                <p class="helper-text" style="margin: 6px 0 0 0;">
                     Reviews by team members
                 </p>
             </div>
@@ -141,7 +141,7 @@
             <div class="metric">
                 <span class="metric-value">{{ team.commit_count }}</span>
                 <span class="metric-label">Commits</span>
-                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                <p class="helper-text" style="margin: 6px 0 0 0;">
                     Total commits pushed
                 </p>
             </div>
@@ -149,7 +149,7 @@
             <div class="metric">
                 <span class="metric-value">{{ "%.1f"|format(team.avg_cycle_time) }}h</span>
                 <span class="metric-label">Avg Cycle Time</span>
-                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                <p class="helper-text" style="margin: 6px 0 0 0;">
                     PR creation to merge time
                 </p>
             </div>
@@ -158,7 +158,7 @@
             <div class="metric">
                 <span class="metric-value">{{ "%.1f"|format(team.throughput) }}</span>
                 <span class="metric-label">Throughput/Week</span>
-                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                <p class="helper-text" style="margin: 6px 0 0 0;">
                     Issues completed per week
                 </p>
             </div>
@@ -168,7 +168,7 @@
             <div class="metric">
                 <span class="metric-value">{{ team.wip_count }}</span>
                 <span class="metric-label">WIP Items</span>
-                <p style="font-size: 11px; color: var(--text-secondary, #7f8c8d); margin: 6px 0 0 0; line-height: 1.3;">
+                <p class="helper-text" style="margin: 6px 0 0 0;">
                     Current work in progress
                 </p>
             </div>

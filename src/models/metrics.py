@@ -192,7 +192,16 @@ class MetricsCalculator:
         Returns:
             Dictionary with team metrics
         """
-        github_members = team_config.get('github', {}).get('members', [])
+        # Extract GitHub members - support both new unified format and old format
+        github_members = []
+        if 'members' in team_config and isinstance(team_config.get('members'), list):
+            # New format: unified members list
+            for member in team_config['members']:
+                if isinstance(member, dict) and member.get('github'):
+                    github_members.append(member['github'])
+        else:
+            # Old format: separate arrays under github key
+            github_members = team_config.get('github', {}).get('members', [])
 
         # Filter dataframes to team members
         team_dfs = {
@@ -217,16 +226,28 @@ class MetricsCalculator:
         # Calculate per-member trends
         member_trends = {}
         for member in github_members:
-            member_prs = team_dfs['pull_requests'][team_dfs['pull_requests']['author'] == member]
-            member_reviews = team_dfs['reviews'][team_dfs['reviews']['reviewer'] == member]
-            member_commits = team_dfs['commits'][team_dfs['commits']['author'] == member]
+            # Handle empty DataFrames gracefully
+            if not team_dfs['pull_requests'].empty and 'author' in team_dfs['pull_requests'].columns:
+                member_prs = team_dfs['pull_requests'][team_dfs['pull_requests']['author'] == member]
+            else:
+                member_prs = pd.DataFrame()
+
+            if not team_dfs['reviews'].empty and 'reviewer' in team_dfs['reviews'].columns:
+                member_reviews = team_dfs['reviews'][team_dfs['reviews']['reviewer'] == member]
+            else:
+                member_reviews = pd.DataFrame()
+
+            if not team_dfs['commits'].empty and 'author' in team_dfs['commits'].columns:
+                member_commits = team_dfs['commits'][team_dfs['commits']['author'] == member]
+            else:
+                member_commits = pd.DataFrame()
 
             member_trends[member] = {
                 'prs': len(member_prs),
                 'reviews': len(member_reviews),
                 'commits': len(member_commits),
-                'lines_added': member_commits['additions'].sum() if not member_commits.empty else 0,
-                'lines_deleted': member_commits['deletions'].sum() if not member_commits.empty else 0,
+                'lines_added': member_commits['additions'].sum() if not member_commits.empty and 'additions' in member_commits.columns else 0,
+                'lines_deleted': member_commits['deletions'].sum() if not member_commits.empty and 'deletions' in member_commits.columns else 0,
             }
 
         # Process Jira filter results
@@ -623,3 +644,116 @@ class MetricsCalculator:
             'jira_metrics': self.calculate_jira_metrics(),
             'updated_at': datetime.now().isoformat(),
         }
+
+    @staticmethod
+    def normalize(value, min_val, max_val):
+        """Normalize a value to 0-100 scale"""
+        if max_val == min_val:
+            return 50.0  # All values equal, return middle score
+        return ((value - min_val) / (max_val - min_val)) * 100
+
+    @staticmethod
+    def calculate_performance_score(metrics, all_metrics_list, team_size=None, weights=None):
+        """
+        Calculate overall performance score (0-100) for a team or person.
+
+        Args:
+            metrics: Dict with individual metrics (prs, reviews, commits, etc.)
+            all_metrics_list: List of all metrics dicts for normalization
+            team_size: Optional team size for normalizing volume metrics (per-capita)
+            weights: Optional dict of metric weights (defaults to balanced)
+
+        Returns:
+            Float score between 0-100
+        """
+        if weights is None:
+            weights = {
+                'prs': 0.20,
+                'reviews': 0.20,
+                'commits': 0.15,
+                'cycle_time': 0.15,  # Lower is better
+                'jira_completed': 0.20,
+                'merge_rate': 0.10
+            }
+
+        # If team_size provided, normalize volume metrics to per-capita before scoring
+        if team_size and team_size > 0:
+            metrics = metrics.copy()  # Don't modify original
+            metrics['prs'] = metrics.get('prs', 0) / team_size
+            metrics['reviews'] = metrics.get('reviews', 0) / team_size
+            metrics['commits'] = metrics.get('commits', 0) / team_size
+            metrics['jira_completed'] = metrics.get('jira_completed', 0) / team_size
+
+            # Also normalize all_metrics_list for comparison
+            all_metrics_list = [
+                {
+                    **m,
+                    'prs': m.get('prs', 0) / m.get('team_size', team_size) if m.get('team_size', team_size) > 0 else 0,
+                    'reviews': m.get('reviews', 0) / m.get('team_size', team_size) if m.get('team_size', team_size) > 0 else 0,
+                    'commits': m.get('commits', 0) / m.get('team_size', team_size) if m.get('team_size', team_size) > 0 else 0,
+                    'jira_completed': m.get('jira_completed', 0) / m.get('team_size', team_size) if m.get('team_size', team_size) > 0 else 0,
+                }
+                for m in all_metrics_list
+            ]
+
+        # Extract all values for normalization
+        prs_values = [m.get('prs', 0) for m in all_metrics_list]
+        reviews_values = [m.get('reviews', 0) for m in all_metrics_list]
+        commits_values = [m.get('commits', 0) for m in all_metrics_list]
+        cycle_time_values = [m.get('cycle_time', 0) for m in all_metrics_list if m.get('cycle_time', 0) > 0]
+        jira_values = [m.get('jira_completed', 0) for m in all_metrics_list]
+        merge_rate_values = [m.get('merge_rate', 0) for m in all_metrics_list]
+
+        # Normalize each metric
+        score = 0.0
+
+        if prs_values and max(prs_values) > 0:
+            prs_score = MetricsCalculator.normalize(
+                metrics.get('prs', 0),
+                min(prs_values),
+                max(prs_values)
+            )
+            score += prs_score * weights['prs']
+
+        if reviews_values and max(reviews_values) > 0:
+            reviews_score = MetricsCalculator.normalize(
+                metrics.get('reviews', 0),
+                min(reviews_values),
+                max(reviews_values)
+            )
+            score += reviews_score * weights['reviews']
+
+        if commits_values and max(commits_values) > 0:
+            commits_score = MetricsCalculator.normalize(
+                metrics.get('commits', 0),
+                min(commits_values),
+                max(commits_values)
+            )
+            score += commits_score * weights['commits']
+
+        # Cycle time: lower is better, so invert the score
+        if cycle_time_values and metrics.get('cycle_time', 0) > 0:
+            cycle_time_score = MetricsCalculator.normalize(
+                metrics.get('cycle_time', 0),
+                min(cycle_time_values),
+                max(cycle_time_values)
+            )
+            score += (100 - cycle_time_score) * weights['cycle_time']
+
+        if jira_values and max(jira_values) > 0:
+            jira_score = MetricsCalculator.normalize(
+                metrics.get('jira_completed', 0),
+                min(jira_values),
+                max(jira_values)
+            )
+            score += jira_score * weights['jira_completed']
+
+        if merge_rate_values and max(merge_rate_values) > 0:
+            merge_rate_score = MetricsCalculator.normalize(
+                metrics.get('merge_rate', 0),
+                min(merge_rate_values),
+                max(merge_rate_values)
+            )
+            score += merge_rate_score * weights['merge_rate']
+
+        return round(score, 1)

@@ -1,65 +1,44 @@
 {% extends "detail_page.html" %}
 
-{% block title %}{{ username }} - Metrics{% endblock %}
-{% block page_title %}{{ username }} - Metrics{% endblock %}
+{% block title %}{{ display_name }} - Metrics{% endblock %}
+{% block page_title %}{{ display_name }} - Metrics{% endblock %}
 
-{% block header_title %}{{ username }}{% endblock %}
+{% block header_title %}{{ display_name }}{% endblock %}
 
 {% block page_description %}
-<div style="font-size: 1.2em; color: var(--text-secondary); margin-bottom: 15px;">
+<div class="page-description">
     Individual Contributor Metrics
 </div>
 {% endblock %}
 
 {% block period_info %}
     {% if team_name %}
-    <div style="margin-bottom: 5px; color: var(--text-secondary);">Team: {{ team_name }}</div>
+    <div class="text-sm" style="margin-bottom: 5px; color: var(--text-secondary);">Team: {{ team_name }}</div>
     {% endif %}
-    <div style="color: var(--text-secondary);">📅 Period: {{ person_data.period.start[:10] if person_data.period.start else 'N/A' }} to {{ person_data.period.end[:10] if person_data.period.end else 'N/A' }}</div>
+    <div class="text-sm" style="color: var(--text-secondary);">📅 Period: {{ person_data.period.start[:10] if person_data.period.start else 'N/A' }} to {{ person_data.period.end[:10] if person_data.period.end else 'N/A' }}</div>
 {% endblock %}
 
 {% block header_meta %}
-<!-- Date Range Selector -->
-<div class="date-selector" style="text-align: center; margin: 20px 0;">
-    <label for="period-select" style="margin-right: 10px; font-weight: 600; color: var(--text-primary);">Select Period:</label>
-    <select id="period-select" onchange="changePeriod()" style="padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px;">
-        <option value="30d" {% if period == '30d' %}selected{% endif %}>Last 30 Days</option>
-        <option value="90d" {% if period == '90d' %}selected{% endif %}>Last 90 Days</option>
-        <option value="180d" {% if period == '180d' %}selected{% endif %}>Last 180 Days</option>
-        <option value="365d" {% if period == '365d' %}selected{% endif %}>Last 365 Days</option>
-        <option value="Q1-2025" {% if period == 'Q1-2025' %}selected{% endif %}>Q1 2025</option>
-        <option value="Q2-2025" {% if period == 'Q2-2025' %}selected{% endif %}>Q2 2025</option>
-        <option value="Q3-2025" {% if period == 'Q3-2025' %}selected{% endif %}>Q3 2025</option>
-        <option value="Q4-2025" {% if period == 'Q4-2025' %}selected{% endif %}>Q4 2025</option>
-    </select>
-</div>
 {% endblock %}
 
 {% block breadcrumb_items %}
 {% if team_name %}
 <a href="/team/{{ team_name }}">{{ team_name }} Team</a>
 {% endif %}
-<a href="/person/{{ username }}">{{ username }}</a>
+<a href="/person/{{ username }}">{{ display_name }}</a>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function changePeriod() {
-    const period = document.getElementById('period-select').value;
-    const url = new URL(window.location);
-    url.searchParams.set('period', period);
-    window.location.href = url.toString();
-}
-</script>
 {% endblock %}
 
 {% block main_content %}
+<div class="person-dashboard-container">
 
         <h2 class="section-title">GitHub Activity</h2>
         <div class="metrics-grid">
             <div class="card">
                 <h2>Pull Requests</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Number of pull requests authored during this period. The merge rate shows what percentage of PRs were successfully merged into the main branch.
                 </p>
                 <div class="metric-value">{{ person_data.github.prs_created }}</div>
@@ -71,7 +50,7 @@ function changePeriod() {
 
             <div class="card">
                 <h2>Code Reviews</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Total number of review comments provided on other team members' pull requests. Measures participation in code review and collaboration.
                 </p>
                 <div class="metric-value">{{ person_data.github.reviews_given }}</div>
@@ -83,7 +62,7 @@ function changePeriod() {
 
             <div class="card">
                 <h2>Commits</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Total commits pushed to the repository. Each commit represents a saved change to the codebase.
                 </p>
                 <div class="metric-value">{{ person_data.github.commits }}</div>
@@ -92,7 +71,7 @@ function changePeriod() {
 
             <div class="card">
                 <h2>Code Changes</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Total lines of code added or removed across all commits. This gives a rough measure of code contribution volume.
                 </p>
                 <div class="metric-value">{{ person_data.github.lines_added + person_data.github.lines_deleted }}</div>
@@ -104,7 +83,7 @@ function changePeriod() {
 
             <div class="card">
                 <h2>PR Cycle Time</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Average time from PR creation to merge. Lower cycle times indicate faster development throughput and efficient review processes.
                 </p>
                 <div class="metric-value">{{ "%.1f"|format(person_data.github.avg_pr_cycle_time) }}h</div>
@@ -113,7 +92,7 @@ function changePeriod() {
 
             <div class="card">
                 <h2>Review Speed</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Average time from review request to first review comment. Lower times indicate more responsive code review.
                 </p>
                 <div class="metric-value">{{ "%.1f"|format(person_data.github.avg_time_to_review) }}h</div>
@@ -127,7 +106,7 @@ function changePeriod() {
 
         <div class="card">
             <h3>Pull Requests Over Time</h3>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Weekly trend of pull requests created. Shows consistency of code contributions and development activity over time.
             </p>
             <div id="pr-trend-chart"></div>
@@ -173,7 +152,7 @@ function changePeriod() {
 
         <div class="card">
             <h3>Code Reviews Over Time</h3>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Weekly trend of code reviews given. Measures ongoing participation in code review and collaboration activities.
             </p>
             <div id="review-trend-chart"></div>
@@ -219,7 +198,7 @@ function changePeriod() {
 
         <div class="card">
             <h3>Commits Over Time</h3>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Weekly commit activity. Indicates the frequency and consistency of code contributions throughout the period.
             </p>
             <div id="commit-trend-chart"></div>
@@ -263,7 +242,7 @@ function changePeriod() {
 
         <div class="card">
             <h3>Code Changes Over Time</h3>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Code additions (green) and deletions (red) by week. Large spikes may indicate major features or refactoring efforts.
             </p>
             <div id="lines-trend-chart"></div>
@@ -322,7 +301,7 @@ function changePeriod() {
         <div class="metrics-grid">
             <div class="card">
                 <h2>Issues Completed</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Total Jira issues resolved during this period. Represents completed work items assigned to this person.
                 </p>
                 <div class="metric-value">{{ person_data.jira.completed }}</div>
@@ -331,7 +310,7 @@ function changePeriod() {
 
             <div class="card">
                 <h2>Work In Progress</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Number of Jira issues currently in progress. Shows the active workload for this person.
                 </p>
                 <div class="metric-value">{{ person_data.jira.in_progress }}</div>
@@ -340,7 +319,7 @@ function changePeriod() {
 
             <div class="card">
                 <h2>Avg Cycle Time</h2>
-                <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+                <p class="helper-text">
                     Average time from when an issue was started to when it was resolved. Lower cycle times indicate faster issue completion.
                 </p>
                 <div class="metric-value">{{ "%.1f"|format(person_data.jira.avg_cycle_time) }}h</div>
@@ -351,7 +330,7 @@ function changePeriod() {
         {% if person_data.jira.types %}
         <div class="card">
             <h2>Issue Types</h2>
-            <p style="font-size: 13px; color: var(--text-secondary, #7f8c8d); margin: 8px 0 15px 0; line-height: 1.4;">
+            <p class="helper-text">
                 Distribution of completed and in-progress issues by type. Shows the mix of work handled (bugs, features, tasks, etc.).
             </p>
             <div id="issue-types-chart"></div>
@@ -409,6 +388,6 @@ function changePeriod() {
             </p>
         </div>
     </div>
-</body>
-</html>
+
+</div> <!-- End of person-dashboard-container -->
 {% endblock %}

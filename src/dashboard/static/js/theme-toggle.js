@@ -73,3 +73,27 @@ function updatePlotlyTheme(theme) {
 document.addEventListener('DOMContentLoaded', function() {
     updateButtonText();
 });
+
+// Cache reload functionality
+function reloadCache() {
+    if (confirm('Reload metrics cache from disk? This will fetch the latest collected data.')) {
+        fetch('/api/reload-cache', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Cache reloaded successfully! The page will now refresh.');
+                location.reload();
+            } else {
+                alert('Error reloading cache: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Failed to reload cache: ' + error);
+        });
+    }
+}

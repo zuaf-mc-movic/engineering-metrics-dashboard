@@ -126,6 +126,10 @@
     transition: background 0.2s ease, color 0.2s ease;
 }
 
+.menu-items li a:visited {
+    color: var(--text-primary);  /* Same as normal state */
+}
+
 .menu-items li a:hover {
     background: var(--bg-tertiary);
     color: var(--accent-primary);
