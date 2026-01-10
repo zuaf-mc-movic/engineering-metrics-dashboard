@@ -429,12 +429,24 @@ def team_dashboard(team_name):
         # Get member names mapping
         member_names = cache.get('member_names', {})
 
-        # Add Jira data to member_trends from persons cache
+        # Add Jira data and update GitHub metrics from persons cache
+        # (person data is more accurate as it includes cross-team contributions)
         if 'persons' in cache and 'github' in team_data and 'member_trends' in team_data['github']:
             member_trends = team_data['github']['member_trends']
             for member in member_trends:
                 if member in cache['persons']:
                     person_data = cache['persons'][member]
+
+                    # Update GitHub metrics with person-level data (more comprehensive)
+                    if 'github' in person_data:
+                        github_data = person_data['github']
+                        member_trends[member]['prs'] = github_data.get('prs_created', member_trends[member]['prs'])
+                        member_trends[member]['reviews'] = github_data.get('reviews_given', member_trends[member]['reviews'])
+                        member_trends[member]['commits'] = github_data.get('commits', member_trends[member]['commits'])
+                        member_trends[member]['lines_added'] = github_data.get('lines_added', member_trends[member]['lines_added'])
+                        member_trends[member]['lines_deleted'] = github_data.get('lines_deleted', member_trends[member]['lines_deleted'])
+
+                    # Add Jira metrics
                     if 'jira' in person_data:
                         member_trends[member]['jira'] = {
                             'completed': person_data['jira'].get('completed', 0),
