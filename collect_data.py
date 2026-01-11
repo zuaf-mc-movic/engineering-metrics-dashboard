@@ -11,7 +11,6 @@ import shutil
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
 from src.config import Config
-from src.collectors.github_collector import GitHubCollector
 from src.collectors.github_graphql_collector import GitHubGraphQLCollector
 from src.collectors.jira_collector import JiraCollector
 from src.models.metrics import MetricsCalculator

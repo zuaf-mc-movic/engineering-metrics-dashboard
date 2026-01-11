@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.config import Config
-from src.collectors.github_collector import GitHubCollector
 from src.collectors.github_graphql_collector import GitHubGraphQLCollector
 from src.collectors.jira_collector import JiraCollector
 from src.models.metrics import MetricsCalculator
@@ -335,40 +334,6 @@ def api_refresh():
     try:
         metrics = refresh_metrics()
         return jsonify({'status': 'success', 'metrics': metrics})
-    except Exception as e:
-        return jsonify({'status': 'error', 'error': str(e)}), 500
-
-@app.route('/api/collect/<period>')
-def api_collect_period(period):
-    """
-    Trigger metrics collection for a specific time period.
-
-    This is a simplified implementation that returns a message about running
-    the collection script manually with the specified period.
-
-    For full implementation, run: python collect_data.py --period <period>
-    """
-    from src.utils.time_periods import parse_period_to_dates, format_period_label
-
-    try:
-        # Validate the period format
-        start_date, end_date = parse_period_to_dates(period)
-        label = format_period_label(period)
-
-        # Return instructions for manual collection
-        return jsonify({
-            'status': 'info',
-            'message': 'Period-based collection requires running the collection script',
-            'period': period,
-            'label': label,
-            'start_date': start_date.isoformat(),
-            'end_date': end_date.isoformat(),
-            'command': f'python collect_data.py --period {period}',
-            'note': 'This will take 15-30 minutes to complete. Run the command in your terminal.'
-        })
-
-    except ValueError as e:
-        return jsonify({'status': 'error', 'error': str(e)}), 400
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
 

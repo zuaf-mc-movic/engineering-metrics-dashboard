@@ -432,7 +432,72 @@
                 <li>View detailed metrics table with best values highlighted in green</li>
                 <li>Compare PRs, reviews, commits, Jira metrics, and more</li>
             </ul>
-            Performance scores are calculated using weighted averages of normalized metrics.
+
+            <h3 style="margin-top: 30px;">Performance Scoring System</h3>
+            <p>
+                The dashboard uses a <strong>composite performance scoring system</strong> to rank teams and individuals.
+                Scores range from <strong>0-100</strong> (higher is better) and are calculated using min-max normalization
+                across all teams/members.
+            </p>
+
+            <h4>Metric Weights:</h4>
+            <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: var(--bg-tertiary);">
+                        <th style="padding: 10px; text-align: left; border: 1px solid var(--border-color);">Metric</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid var(--border-color);">Weight</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid var(--border-color);">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">PRs Created</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">20%</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Pull requests authored</td>
+                    </tr>
+                    <tr style="background: var(--bg-secondary);">
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Reviews Given</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">20%</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Code reviews provided to others</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Commits</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">15%</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Total commits authored</td>
+                    </tr>
+                    <tr style="background: var(--bg-secondary);">
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Cycle Time</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">15%</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">PR merge time (lower is better, inverted)</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Jira Completed</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">20%</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Jira issues resolved</td>
+                    </tr>
+                    <tr style="background: var(--bg-secondary);">
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Merge Rate</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">10%</td>
+                        <td style="padding: 10px; border: 1px solid var(--border-color);">Percentage of PRs successfully merged</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Key Features:</h4>
+            <ul style="margin-top: 15px;">
+                <li><strong>Cycle Time Inversion:</strong> Lower cycle times score higher (faster PR merges are better)</li>
+                <li><strong>Team Size Normalization:</strong> Divides volume metrics by team size for fair per-capita comparison</li>
+                <li><strong>Consistent Algorithm:</strong> Same scoring logic for both team and person comparisons</li>
+                <li><strong>Visual Rankings:</strong> Teams/members displayed with scores, ranks, and badges (🥇🥈🥉)</li>
+            </ul>
+
+            <p style="margin-top: 20px;">
+                <strong>Where you see it:</strong>
+            </p>
+            <ul>
+                <li>Team Comparison page: Overall Performance card with scores per team</li>
+                <li>Team Member Comparison: Top Performers leaderboard with rankings</li>
+            </ul>
         </div>
     </div>
 </div>

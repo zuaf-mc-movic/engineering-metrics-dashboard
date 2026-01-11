@@ -34,11 +34,11 @@ A Python-based metrics collection and visualization tool for tracking team perfo
 - **Web Dashboard**: Interactive Flask-based visualization
   - Main overview dashboard with 2-column team layout
   - Individual team dashboards with Jira metrics
-  - Person dashboards with date filtering and trend visualizations
-    - Flexible date ranges (30d, 90d, 180d, 365d, quarterly)
+  - Person dashboards with trend visualizations
     - 4 interactive trend charts (PRs, reviews, commits, code changes)
-    - 365-day rolling window for person metrics
-  - Team comparison dashboard with side-by-side charts
+    - Fixed 90-day rolling window for all metrics
+  - Team comparison dashboard with side-by-side charts and performance scores
+  - Team member comparison with performance rankings and leaderboard
   - Dark mode support across all views
   - Responsive chart layouts with optimal sizing
   - 🎨 **Semantic Chart Colors**: Consistent color coding (Red=Created, Green=Resolved, Blue=Net) across all charts for intuitive understanding
@@ -316,11 +316,43 @@ The system uses GitHub's GraphQL API v4 for data collection:
 1. **Main Dashboard** - Overview of all teams with 2-column grid layout
 2. **Team Dashboard** - Team-specific metrics with Jira filters and WIP charts
 3. **Person Dashboard** - Individual contributor metrics with:
-   - Date range selector (30d, 90d, 180d, 365d, quarters)
    - Interactive trend charts showing activity over time
-   - 365-day rolling window (filterable to any period)
+   - Fixed 90-day rolling window (consistent across all metrics)
    - Weekly aggregated trends for visualization
-4. **Comparison Dashboard** - Side-by-side team comparison with centered bar charts
+4. **Team Comparison Dashboard** - Side-by-side team comparison with centered bar charts and performance scores
+5. **Team Member Comparison** - Within-team rankings with performance scores and leaderboard (🥇🥈🥉)
+
+### Performance Scoring System
+
+The dashboard includes a **composite performance scoring system** used to rank teams and individuals across multiple metrics.
+
+**How It Works:**
+- Scores range from **0-100** (higher is better)
+- Each metric is normalized using min-max scaling across all teams/members
+- Normalized scores are weighted and summed to create the composite score
+- Team size normalization ensures fair per-capita comparison
+
+**Default Metric Weights:**
+| Metric | Weight | Description |
+|--------|--------|-------------|
+| PRs Created | 20% | Pull requests authored |
+| Reviews Given | 20% | Code reviews provided to others |
+| Commits | 15% | Total commits authored |
+| Cycle Time | 15% | PR merge time (lower is better, inverted) |
+| Jira Completed | 20% | Jira issues resolved |
+| Merge Rate | 10% | Percentage of PRs successfully merged |
+
+**Key Features:**
+- **Cycle Time Inversion**: Lower cycle times score higher (faster PR merges are better)
+- **Team Size Normalization**: Divides volume metrics by team size for fair comparison
+- **Consistent Algorithm**: Same scoring logic for both team and person comparisons
+- **Visual Rankings**: Teams/members displayed with scores, ranks, and badges (🥇🥈🥉)
+
+**Where You See It:**
+- Team Comparison page: Overall Performance card with scores per team
+- Team Member Comparison: Top Performers leaderboard with rankings
+
+**Implementation:** See `src/models/metrics.py:656-759` for the scoring algorithm.
 
 ### UI Features
 - **Dark Mode**: Toggle between light and dark themes across all pages

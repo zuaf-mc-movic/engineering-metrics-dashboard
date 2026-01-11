@@ -83,25 +83,3 @@ class Config:
                 return team
         return None
 
-    @property
-    def time_periods(self):
-        """Get time period configurations"""
-        return self.config.get('time_periods', {
-            'last_n_days': [7, 14, 30, 60, 90],
-            'quarters_enabled': True,
-            'custom_range_enabled': True,
-            'max_days_back': 365
-        })
-
-    @property
-    def activity_thresholds(self):
-        """Get activity threshold configurations"""
-        return self.config.get('activity_thresholds', {
-            'minimum_values': {
-                'prs_per_month': 5,
-                'reviews_per_month': 10,
-                'commits_per_month': 20
-            },
-            'trend_decline_threshold_percent': 20,
-            'below_average_threshold_percent': 70
-        })

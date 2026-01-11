@@ -317,6 +317,12 @@ td .jira-filter-link {
     margin-left: 10px;
 }
 
+/* Bug filter links in table cells - use normal font size */
+td .bug-filter-link {
+    font-size: inherit;
+    margin-left: 0;
+}
+
 .bug-filter-link:visited {
     color: #c0392b;  /* Darker red for visited */
 }

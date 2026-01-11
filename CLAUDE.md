@@ -155,6 +155,7 @@ pytest -m "not slow"
   - `calculate_team_metrics()` - Team-level aggregations with Jira filters
   - `calculate_person_metrics()` - Individual contributor metrics (90-day rolling window)
   - `calculate_team_comparison()` - Cross-team comparison data
+  - `calculate_performance_score()` - Composite 0-100 scoring for rankings (lines 656-759)
 
 **Configuration** (`src/config.py`):
 - `Config` class loads from `config/config.yaml`
@@ -207,7 +208,33 @@ teams:
         # ... more filter IDs
 ```
 
-### GitHub GraphQL vs REST
+### Performance Scoring System
+
+**Algorithm** (`src/models/metrics.py:656-759`):
+- Composite score from 0-100 (higher is better)
+- Uses min-max normalization across all teams/members
+- Weighted sum of normalized metrics
+
+**Default Weights**:
+```python
+'prs': 0.20,            # Pull requests created
+'reviews': 0.20,        # Code reviews given
+'commits': 0.15,        # Total commits
+'cycle_time': 0.15,     # PR merge time (lower is better - inverted)
+'jira_completed': 0.20, # Jira issues resolved
+'merge_rate': 0.10      # PR merge success rate
+```
+
+**Key Features**:
+- **Cycle Time Inversion**: Score = (100 - normalized_value) for cycle time
+- **Team Size Normalization**: Divides volume metrics by team_size for per-capita comparison
+- **Edge Case Handling**: Returns 50.0 when all values are equal (no variation)
+
+**Used In**:
+- Team Comparison page: Overall Performance card
+- Team Member Comparison: Top Performers leaderboard with rankings
+
+### GitHub GraphQL Queries
 
 **Why GraphQL is used**:
 - Separate rate limit (5000 points/hour vs REST's 5000 requests/hour)
@@ -215,10 +242,97 @@ teams:
 - Pagination built-in, no need for multiple page requests
 - 50-70% fewer API calls = faster collection
 
-**GraphQL Query Structure** (see `github_graphql_collector.py`):
-- `_fetch_prs_for_user()` - PRs with nested review data
-- `_fetch_commits_for_user()` - Commit history with stats
-- Pagination handled automatically with cursors
+**Example PR Query** (`github_graphql_collector.py:268-298`):
+```graphql
+query {
+  repository(owner: "org", name: "repo") {
+    pullRequests(first: 100, orderBy: {field: CREATED_AT, direction: DESC}) {
+      nodes {
+        number
+        title
+        createdAt
+        mergedAt
+        closedAt
+        author { login }
+        reviews(first: 100) {
+          nodes {
+            author { login }
+            createdAt
+            state
+          }
+        }
+        additions
+        deletions
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+```
+
+**Example Repository Query** (lines 118-134):
+```graphql
+query {
+  organization(login: "org") {
+    teams(first: 100) {
+      nodes {
+        slug
+        repositories(first: 100) {
+          nodes {
+            name
+            owner { login }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Pagination**: Uses `endCursor` and `hasNextPage` for automatic pagination
+**Ordering**: PRs ordered by `CREATED_AT` (not `UPDATED_AT`) to ensure consistent results
+
+### Jira JQL Queries
+
+**Project Query** (`jira_collector.py:60`):
+```jql
+project = {key} AND (
+  created >= -90d OR
+  resolved >= -90d OR
+  (statusCategory != Done AND updated >= -90d)
+)
+```
+
+**Person Query** (`jira_collector.py:195`):
+```jql
+assignee = "username" AND (
+  created >= -90d OR
+  resolved >= -90d OR
+  (statusCategory != Done AND updated >= -90d)
+)
+```
+
+**Anti-Noise Filtering Rationale**:
+- `updated >= -90d` only applies to non-Done tickets
+- Prevents mass administrative updates (e.g., bulk label changes) from polluting results
+- Only captures actual work: new issues, resolved issues, and active WIP
+- Without this filter, bulk updates can include thousands of old closed tickets
+
+**Filter Query** (line 278):
+```python
+# Uses Jira filter IDs from team config
+# Dynamically adds time constraints: created >= -90d OR resolved >= -90d
+filter_url = f"{server}/rest/api/2/filter/{filter_id}"
+```
+
+**Worklogs Query** (line 153):
+```python
+# Fetches time tracking data for cycle time calculations
+worklog_url = f"{server}/rest/api/2/issue/{issue_key}/worklog"
+```
 
 ### Metrics Time Windows
 
