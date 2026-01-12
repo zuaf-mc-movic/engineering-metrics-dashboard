@@ -862,10 +862,17 @@ class JiraCollector:
             jql = f'project = {project_key} AND fixVersion = "{version_name}"'
 
             # Filter by team membership (assignee or reporter)
-            if team_members and len(team_members) > 0:
+            if team_members is not None and len(team_members) > 0:
                 # Escape usernames for JQL (wrap in quotes if they contain spaces)
-                members_str = ', '.join([f'"{m}"' if ' ' in m else m for m in team_members])
-                jql += f' AND (assignee in ({members_str}) OR reporter in ({members_str}))'
+                # Filter out None/empty values first
+                try:
+                    valid_members = [str(m) for m in team_members if m is not None and str(m).strip()]
+                    if valid_members:
+                        members_str = ', '.join([f'"{m}"' if ' ' in m else m for m in valid_members])
+                        jql += f' AND (assignee in ({members_str}) OR reporter in ({members_str}))'
+                except (TypeError, AttributeError) as e:
+                    # If team_members is not iterable, skip filtering
+                    pass
 
             issues = self.jira.search_issues(jql, maxResults=1000, fields='key')
 

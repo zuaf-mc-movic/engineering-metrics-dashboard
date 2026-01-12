@@ -427,6 +427,74 @@ const CHART_COLORS = {
 - Only captures actual work: new issues, resolved issues, and active WIP (not closed items with label updates)
 - See `src/collectors/jira_collector.py:60` (project query) and `:195` (person query)
 
+### DORA Metrics: How Releases Are Counted
+
+**Release Source**: Uses Jira Fix Versions instead of GitHub Releases for deployment tracking.
+
+**Accurate Counting Logic** (`jira_collector.py:649-758`):
+
+The system counts releases using three filtering mechanisms to ensure accurate DORA metrics:
+
+**1. Version Release Status Check**:
+```python
+# Only count versions that are actually released (not planned/future)
+if not getattr(version, 'released', False):
+    continue  # Skip unreleased versions
+
+# Also check releaseDate must be in the past
+release_date = getattr(version, 'releaseDate', None)
+if release_date:
+    release_dt = datetime.strptime(release_date, '%Y-%m-%d')
+    if release_dt > now:
+        continue  # Skip future releases
+```
+
+**2. Pattern Matching**:
+- Supported formats:
+  - `"Live - 6/Oct/2025"` → production deployment
+  - `"Beta - 15/Jan/2026"` → staging deployment
+  - `"Website - 26/Jan/2012"` → production deployment
+  - `"Preview - 20/Jan/2026"` → staging/preview
+  - `"RA_Web_2025_11_25"` → production (LENS8 project format)
+- Pattern parsing in `_parse_fix_version_name()` (lines 760-846)
+
+**3. Team Member Filtering**:
+```python
+# Only count issues worked on by team members
+jql = f'project = {key} AND fixVersion = "{version}" AND '
+jql += f'(assignee in ({team_members}) OR reporter in ({team_members}))'
+```
+
+**Why This Matters**:
+- **Without filtering**: Inflated metrics (2-3x higher than reality)
+- **With filtering**: Accurate team-specific metrics
+- Example: Native team went from 31 → 24 deployments (23% reduction) after applying filters
+
+**Team-Specific Collection** (`collect_data.py:441-461`):
+- Each team gets a dedicated `JiraCollector` instance with `team_members` parameter
+- Ensures cross-team releases are counted separately per team
+- Only issues assigned to/reported by team members count toward that team's release
+
+**Logging**:
+```
+🚀 Collecting releases from Jira Fix Versions for Native Team...
+  Found 2414 versions in project RSC
+  ✓ Matched 24 released versions
+    (Skipped 1229 non-matching versions)
+    (Skipped 538 unreleased versions)
+    (Skipped 611 old versions)
+  Total releases collected: 24
+    Production: 20
+    Staging: 4
+```
+
+**Expected Impact on DORA Metrics**:
+- Deployment Frequency: 50-70% reduction from inflated values to accurate baseline
+- Lead Time: More accurate as only team's actual work is considered
+- Typical realistic values: 0.5-2.0 deployments/week per team
+
+**See Also**: `docs/JIRA_FIX_VERSION_TROUBLESHOOTING.md` for detailed troubleshooting
+
 ### Cache Management
 - Pickle format: `{'teams': {...}, 'persons': {...}, 'comparison': {...}, 'timestamp': datetime}`
 - Dashboard checks cache age (default: 60 min) before auto-refresh

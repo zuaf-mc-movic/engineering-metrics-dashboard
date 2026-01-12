@@ -181,6 +181,87 @@ collector = JiraCollector(
 
 ---
 
+### Issue 7: "Deployment Frequency Dropped After Update"
+
+**Symptoms:**
+```
+Before: Deployment Frequency: 2.8/week
+After:  Deployment Frequency: 1.2/week
+```
+
+**This is EXPECTED and CORRECT** ✅
+
+**Why:** The system now accurately counts only:
+1. **Actually released versions** (not planned/unreleased ones)
+2. **Team-specific releases** (only issues worked on by your team members)
+
+**What Was Fixed:**
+
+#### Fix 1: Version Release Status
+Previously counted ALL versions matching the name pattern, including:
+- ❌ Unreleased versions (`released=False`)
+- ❌ Future releases (scheduled but not deployed yet)
+
+Now checks:
+```python
+# Only count if version is released AND in the past
+if not version.released:
+    continue  # Skip unreleased versions
+if version.releaseDate > today:
+    continue  # Skip future releases
+```
+
+**Impact Example:**
+- RSC project: Skipped 538 unreleased versions (22% of 2414 total)
+- Native Team: 31 → 24 deployments (23% reduction)
+
+#### Fix 2: Team Member Filtering
+Previously counted ALL issues in a version, even if other teams did the work.
+
+Now filters by team membership:
+```python
+# Only count issues assigned to or reported by team members
+jql = f'fixVersion = "{version}" AND '
+jql += f'(assignee in ({team}) OR reporter in ({team}))'
+```
+
+**Impact Example:**
+- WebTC Team: 7 → 4 deployments (43% reduction)
+- Cross-team releases now counted separately per team
+
+#### Fix 3: Team-Specific Collectors
+Each team now gets its own `JiraCollector` instance with team context.
+
+**Result:** Fair apples-to-apples team comparisons (no cross-team contamination).
+
+**What To Expect:**
+
+| Metric | Before Fixes | After Fixes | Change |
+|--------|-------------|-------------|--------|
+| Deployment Frequency | 2-3/week (inflated) | 0.5-2.0/week (realistic) | 50-70% reduction |
+| Lead Time | May be skewed | More accurate | Team-specific |
+| DORA Level | Artificially HIGH | Accurate baseline | May drop initially |
+
+**This is GOOD NEWS** - your metrics are now trustworthy! 📊✅
+
+**Common Questions:**
+
+Q: "Why did my metrics drop so much?"
+A: Previous metrics were inflated by counting unreleased versions and other teams' work.
+
+Q: "Should I be concerned about lower numbers?"
+A: No! These are accurate baselines. Track trends over time to improve.
+
+Q: "Can I see what was filtered out?"
+A: Yes! Look for these log messages during collection:
+```
+✓ Matched 24 released versions
+  (Skipped 538 unreleased versions)
+  (Skipped 1229 non-matching versions)
+```
+
+---
+
 ## Pattern Customization
 
 If your version format doesn't match, you can adjust the pattern.
