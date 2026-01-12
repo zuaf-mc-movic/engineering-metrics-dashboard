@@ -599,3 +599,116 @@ td .bug-filter-link {
     color: #2ecc71;
     border-left-color: #2ecc71;
 }
+
+/* DORA Metrics Styling */
+.dora-performance-card {
+    text-align: center;
+    padding: 30px;
+    margin: 25px 0;
+}
+
+.dora-level-badge {
+    font-size: 2.5em;
+    font-weight: bold;
+    padding: 25px 40px;
+    border-radius: 12px;
+    text-align: center;
+    margin: 20px auto;
+    max-width: 400px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.dora-level-badge.elite {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.dora-level-badge.high {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+}
+
+.dora-level-badge.medium {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+}
+
+.dora-level-badge.low {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.dora-breakdown {
+    margin-top: 20px;
+    padding: 15px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    font-size: 0.95em;
+}
+
+.metric-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-badge.elite {
+    background: #667eea;
+    color: white;
+}
+
+.metric-badge.high {
+    background: #2ecc71;
+    color: white;
+}
+
+.metric-badge.medium {
+    background: #f39c12;
+    color: white;
+}
+
+.metric-badge.low {
+    background: #e74c3c;
+    color: white;
+}
+
+.metric-badge.unknown {
+    background: #95a5a6;
+    color: white;
+}
+
+.metric-details {
+    margin-top: 12px;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Dark mode adjustments for DORA */
+[data-theme="dark"] .dora-level-badge.elite {
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+}
+
+[data-theme="dark"] .dora-level-badge.high {
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.5);
+}
+
+[data-theme="dark"] .dora-level-badge.medium {
+    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.5);
+}
+
+[data-theme="dark"] .dora-level-badge.low {
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
+}
+

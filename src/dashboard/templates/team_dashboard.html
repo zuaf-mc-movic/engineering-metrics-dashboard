@@ -92,6 +92,143 @@
             </div>
         </div>
 
+        {% if team_data.dora %}
+        <h2 style="margin: 40px 0 15px 0;">🚀 DORA Metrics</h2>
+        <p class="helper-text" style="margin-bottom: 20px;">
+            DevOps Research and Assessment (DORA) four key metrics measure elite software delivery performance.
+            <a href="https://dora.dev/" target="_blank" style="color: var(--primary-color);">Learn more</a>
+        </p>
+
+        <div class="metrics-grid">
+            <!-- Deployment Frequency Card -->
+            <div class="card metric-card">
+                <h3>Deployment Frequency</h3>
+                <p class="helper-text">How often code is deployed to production</p>
+                <div class="metric-value">{{ team_data.dora.deployment_frequency.per_week|round(1) }}</div>
+                <div class="metric-label">Deployments per Week</div>
+                <div class="metric-badge {{ team_data.dora.deployment_frequency.badge_class }}">
+                    {{ team_data.dora.deployment_frequency.level|capitalize }}
+                </div>
+                <div class="metric-details">
+                    Total: {{ team_data.dora.deployment_frequency.total_deployments }} production releases
+                </div>
+            </div>
+
+            <!-- Lead Time Card -->
+            <div class="card metric-card">
+                <h3>Lead Time for Changes</h3>
+                <p class="helper-text">Time from PR merge to production</p>
+                {% if team_data.dora.lead_time.median_days is not none %}
+                <div class="metric-value">{{ team_data.dora.lead_time.median_days|round(1) }}</div>
+                <div class="metric-label">Days (Median)</div>
+                <div class="metric-badge {{ team_data.dora.lead_time.badge_class }}">
+                    {{ team_data.dora.lead_time.level|capitalize }}
+                </div>
+                <div class="metric-details">
+                    p95: {{ team_data.dora.lead_time.p95_days|round(1) }} days | Sample: {{ team_data.dora.lead_time.sample_size }} PRs
+                </div>
+                {% else %}
+                <div class="metric-value">—</div>
+                <div class="metric-label">No Data</div>
+                <div class="metric-details">No PRs mapped to deployments</div>
+                {% endif %}
+            </div>
+
+            <!-- Change Failure Rate Card -->
+            <div class="card metric-card">
+                <h3>Change Failure Rate</h3>
+                <p class="helper-text">% of deployments causing incidents</p>
+                {% if team_data.dora.change_failure_rate.rate_percent is not none %}
+                <div class="metric-value">{{ team_data.dora.change_failure_rate.rate_percent|round(1) }}%</div>
+                <div class="metric-label">Failed Deployments</div>
+                <div class="metric-badge {{ team_data.dora.change_failure_rate.badge_class }}">
+                    {{ team_data.dora.change_failure_rate.level|capitalize }}
+                </div>
+                <div class="metric-details">
+                    {{ team_data.dora.change_failure_rate.failed_deployments }} / {{ team_data.dora.change_failure_rate.total_deployments }} deployments
+                </div>
+                {% else %}
+                <div class="metric-value">—</div>
+                <div class="metric-label">{{ team_data.dora.change_failure_rate.get('note', 'No Data') }}</div>
+                <div class="metric-details">
+                    {{ team_data.dora.change_failure_rate.total_deployments }} deployments tracked
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- MTTR Card -->
+            <div class="card metric-card">
+                <h3>Mean Time to Restore</h3>
+                <p class="helper-text">Time to recover from incidents</p>
+                {% if team_data.dora.mttr.median_days is not none %}
+                <div class="metric-value">{{ team_data.dora.mttr.median_days|round(1) }}</div>
+                <div class="metric-label">Days (Median)</div>
+                <div class="metric-badge {{ team_data.dora.mttr.badge_class }}">
+                    {{ team_data.dora.mttr.level|capitalize }}
+                </div>
+                <div class="metric-details">
+                    p95: {{ team_data.dora.mttr.p95_days|round(1) }} days | Sample: {{ team_data.dora.mttr.sample_size }} incidents
+                </div>
+                {% else %}
+                <div class="metric-value">—</div>
+                <div class="metric-label">{{ team_data.dora.mttr.get('note', 'No Data') }}</div>
+                <div class="metric-details">Incident tracking not configured</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- DORA Performance Level Card -->
+        <div class="card dora-performance-card">
+            <h3>Overall DORA Performance Level</h3>
+            <div class="dora-level-badge {{ team_data.dora.dora_level.level|lower }}">
+                {{ team_data.dora.dora_level.level }}
+            </div>
+            <p class="helper-text" style="margin-top: 15px;">
+                {{ team_data.dora.dora_level.description }}
+            </p>
+            <div class="dora-breakdown">
+                <strong>Metric Breakdown:</strong>
+                Elite: {{ team_data.dora.dora_level.breakdown.elite }} |
+                High: {{ team_data.dora.dora_level.breakdown.high }} |
+                Medium: {{ team_data.dora.dora_level.breakdown.medium }} |
+                Low: {{ team_data.dora.dora_level.breakdown.low }}
+            </div>
+        </div>
+
+        <!-- Deployment Frequency Trend Chart -->
+        {% if team_data.dora.deployment_frequency.trend %}
+        <div class="card chart-card">
+            <h3>Deployment Frequency Trend</h3>
+            <p class="helper-text">Weekly production deployment volume over time</p>
+            <div id="deployment-trend-chart"></div>
+            <script>
+                const deploymentTrendData = {{ team_data.dora.deployment_frequency.trend|tojson }};
+                const weeks = Object.keys(deploymentTrendData).sort();
+                const counts = weeks.map(week => deploymentTrendData[week]);
+
+                const deploymentTrace = {
+                    x: weeks,
+                    y: counts,
+                    type: 'bar',
+                    name: 'Deployments',
+                    marker: {
+                        color: CHART_COLORS.PRS
+                    }
+                };
+
+                const layout = {
+                    ...getChartLayout(),
+                    xaxis: { title: 'Week' },
+                    yaxis: { title: 'Deployments' },
+                    showlegend: false
+                };
+
+                Plotly.newPlot('deployment-trend-chart', [deploymentTrace], layout, {responsive: true});
+            </script>
+        </div>
+        {% endif %}
+        {% endif %}
+
         {% if team_data.jira %}
         <h2 style="margin: 40px 0 15px 0;">Jira Metrics</h2>
 

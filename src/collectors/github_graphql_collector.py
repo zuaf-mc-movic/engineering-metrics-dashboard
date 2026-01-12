@@ -171,7 +171,8 @@ class GitHubGraphQLCollector:
             'pull_requests': [],
             'reviews': [],
             'commits': [],
-            'deployments': []
+            'deployments': [],
+            'releases': []
         }
 
         # Get repositories
@@ -212,6 +213,7 @@ class GitHubGraphQLCollector:
                 all_data['pull_requests'].extend(pr_data['pull_requests'])
                 all_data['reviews'].extend(pr_data['reviews'])
                 all_data['commits'].extend(pr_data['commits'])
+                all_data['releases'].extend(pr_data.get('releases', []))
 
             except Exception as e:
                 # Track failed repo
@@ -253,13 +255,187 @@ class GitHubGraphQLCollector:
                        if r['reviewer'] in self.team_members or r.get('pr_author') in self.team_members],
             'commits': [c for c in data['commits']
                        if c['author'] in self.team_members],
-            'deployments': data['deployments']
+            'deployments': data['deployments'],
+            'releases': data.get('releases', [])  # Don't filter releases by person
         }
 
         print(f"  Filtered to team members: {len(filtered_data['pull_requests'])} PRs, "
               f"{len(filtered_data['reviews'])} reviews, {len(filtered_data['commits'])} commits")
 
+        if filtered_data['releases']:
+            print(f"   - Releases: {len(filtered_data['releases'])} (team-level)")
+
         return filtered_data
+
+    def _collect_releases_graphql(self, owner: str, repo_name: str) -> List[Dict]:
+        """Collect releases from GitHub GraphQL API
+
+        Collects all releases in the date range and classifies them by environment
+        (production vs staging) based on tag naming patterns.
+
+        Args:
+            owner: Repository owner
+            repo_name: Repository name
+
+        Returns:
+            List of release dictionaries with environment classification
+        """
+        query = """
+        query($owner: String!, $name: String!, $cursor: String) {
+          repository(owner: $owner, name: $name) {
+            releases(first: 100, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}) {
+              nodes {
+                name
+                tagName
+                createdAt
+                publishedAt
+                isPrerelease
+                isDraft
+                author {
+                  login
+                }
+                tagCommit {
+                  oid
+                  committedDate
+                }
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+        }
+        """
+
+        releases = []
+        cursor = None
+
+        while True:
+            try:
+                data = self._execute_query(query, {
+                    "owner": owner,
+                    "name": repo_name,
+                    "cursor": cursor
+                })
+
+                if not data.get("repository"):
+                    break
+
+                release_data = data["repository"]["releases"]
+                nodes = release_data["nodes"]
+
+                releases_in_date_range_on_this_page = 0
+
+                for release in nodes:
+                    # Skip draft releases
+                    if release.get("isDraft", False):
+                        continue
+
+                    # Parse dates
+                    published_at = None
+                    if release.get("publishedAt"):
+                        published_at = datetime.fromisoformat(release["publishedAt"].replace('Z', '+00:00'))
+
+                    created_at = None
+                    if release.get("createdAt"):
+                        created_at = datetime.fromisoformat(release["createdAt"].replace('Z', '+00:00'))
+
+                    # Use publishedAt for date filtering (when release went public)
+                    release_date = published_at or created_at
+                    if not release_date or release_date < self.since_date:
+                        continue
+
+                    releases_in_date_range_on_this_page += 1
+
+                    # Determine environment based on tag pattern
+                    tag_name = release.get("tagName", "")
+                    environment = self._classify_release_environment(tag_name, release.get("isPrerelease", False))
+
+                    # Extract commit info
+                    commit_sha = None
+                    committed_date = None
+                    if release.get("tagCommit"):
+                        commit_sha = release["tagCommit"].get("oid")
+                        if release["tagCommit"].get("committedDate"):
+                            committed_date = datetime.fromisoformat(
+                                release["tagCommit"]["committedDate"].replace('Z', '+00:00')
+                            )
+
+                    # Build release entry
+                    release_entry = {
+                        'repo': f"{owner}/{repo_name}",
+                        'tag_name': tag_name,
+                        'release_name': release.get("name", tag_name),
+                        'published_at': published_at,
+                        'created_at': created_at,
+                        'environment': environment,
+                        'author': release["author"]["login"] if release.get("author") else "unknown",
+                        'commit_sha': commit_sha,
+                        'committed_date': committed_date,
+                        'is_prerelease': release.get("isPrerelease", False)
+                    }
+
+                    releases.append(release_entry)
+
+                # Early termination: if no releases in date range on this page, stop
+                if releases_in_date_range_on_this_page == 0:
+                    break
+
+                if not release_data["pageInfo"]["hasNextPage"]:
+                    break
+
+                cursor = release_data["pageInfo"]["endCursor"]
+
+            except Exception as e:
+                print(f"  Warning: Error collecting releases for {owner}/{repo_name}: {e}")
+                break
+
+        return releases
+
+    def _classify_release_environment(self, tag_name: str, is_prerelease: bool) -> str:
+        """Classify release as production or staging based on tag pattern
+
+        Args:
+            tag_name: Git tag name (e.g., "v1.2.3", "v1.2.3-rc1")
+            is_prerelease: GitHub's prerelease flag
+
+        Returns:
+            'production' or 'staging'
+        """
+        import re
+
+        # If explicitly marked as prerelease, it's staging
+        if is_prerelease:
+            return 'staging'
+
+        # Production pattern: vX.Y.Z (semantic version with no suffix)
+        # Examples: v1.2.3, v10.0.0, 1.2.3
+        production_pattern = r'^v?\d+\.\d+\.\d+$'
+
+        # Staging patterns: any suffix like -rc, -beta, -alpha, -test
+        # Examples: v1.2.3-rc1, v1.2.3-beta, v1.2.3-alpha.1
+        staging_patterns = [
+            r'-rc\d*',      # Release candidates
+            r'-beta',       # Beta releases
+            r'-alpha',      # Alpha releases
+            r'-test',       # Test releases
+            r'-dev',        # Development releases
+            r'-preview',    # Preview releases
+            r'-snapshot',   # Snapshot releases
+        ]
+
+        # Check if it's a clean production release
+        if re.match(production_pattern, tag_name):
+            return 'production'
+
+        # Check if it matches any staging pattern
+        for pattern in staging_patterns:
+            if re.search(pattern, tag_name, re.IGNORECASE):
+                return 'staging'
+
+        # Default to staging for non-standard tags
+        return 'staging'
 
     def _collect_repository_metrics(self, owner: str, repo_name: str) -> Dict:
         """Collect PRs, reviews, and commits for a repository using a single GraphQL query"""
@@ -489,10 +665,14 @@ class GitHubGraphQLCollector:
         # This ensures PRs and commits use consistent date filtering (PR creation date)
         # Old method: self._collect_commits_graphql(owner, repo_name) - used default branch
 
+        # Collect releases/deployments for the repository
+        releases = self._collect_releases_graphql(owner, repo_name)
+
         return {
             'pull_requests': pull_requests,
             'reviews': reviews,
-            'commits': unique_commits
+            'commits': unique_commits,
+            'releases': releases
         }
 
 
@@ -588,4 +768,5 @@ class GitHubGraphQLCollector:
             'reviews': pd.DataFrame(data['reviews']),
             'commits': pd.DataFrame(data['commits']),
             'deployments': pd.DataFrame(data['deployments']),
+            'releases': pd.DataFrame(data['releases'])
         }

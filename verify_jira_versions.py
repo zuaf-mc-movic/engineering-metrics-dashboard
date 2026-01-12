@@ -28,9 +28,16 @@ def main():
     # Load config
     try:
         config = Config()
+        jira_config = config.jira_config
+
+        if not jira_config or not jira_config.get('server'):
+            print(f"\n✗ Jira not configured in config/config.yaml")
+            print(f"   Please add jira.server and jira.project_keys to your config")
+            return 1
+
         print(f"\n✓ Config loaded")
-        print(f"  Server: {config.jira_server}")
-        print(f"  Projects: {', '.join(config.jira_project_keys)}")
+        print(f"  Server: {jira_config.get('server')}")
+        print(f"  Projects: {', '.join(jira_config.get('project_keys', []))}")
     except Exception as e:
         print(f"\n✗ Error loading config: {e}")
         return 1
@@ -38,11 +45,12 @@ def main():
     # Create collector
     try:
         collector = JiraCollector(
-            server=config.jira_server,
-            username=config.jira_username,
-            api_token=config.jira_api_token,
-            project_keys=config.jira_project_keys,
-            days_back=90
+            server=jira_config['server'],
+            username=jira_config.get('username', ''),
+            api_token=jira_config.get('api_token', ''),
+            project_keys=jira_config.get('project_keys', []),
+            days_back=90,
+            verify_ssl=False
         )
         print(f"✓ Connected to Jira")
     except Exception as e:
@@ -58,7 +66,7 @@ def main():
     print("Checking Fix Versions in Your Projects")
     print(f"{'='*70}")
 
-    for project_key in config.jira_project_keys:
+    for project_key in jira_config.get('project_keys', []):
         print(f"\n📦 Project: {project_key}")
         print("-" * 70)
 

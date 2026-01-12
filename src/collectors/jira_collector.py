@@ -34,7 +34,9 @@ class JiraCollector:
         self.project_keys = project_keys
         self.team_members = team_members or []
         self.days_back = days_back
-        self.since_date = datetime.now() - timedelta(days=days_back)
+        # Make since_date timezone-aware (UTC) for comparison with Fix Version dates
+        from datetime import timezone
+        self.since_date = datetime.now(timezone.utc) - timedelta(days=days_back)
 
     def collect_all_metrics(self):
         """Collect all metrics from Jira"""
@@ -728,7 +730,11 @@ class JiraCollector:
     def _parse_fix_version_name(self, version_name: str) -> Dict:
         """Parse Jira Fix Version name into release structure
 
-        Format: "Live - 6/Oct/2025" or "Beta - 6/Oct/2025"
+        Supported formats:
+        - "Live - 6/Oct/2025" or "Beta - 15/Jan/2026" (production/staging)
+        - "Beta WebTC - 28/Aug/2023" (with product name)
+        - "Website - 26/Jan/2012" (production)
+        - "RA_Web_YYYY_MM_DD" (LENS8 project, production)
 
         Args:
             version_name: Jira Fix Version name
@@ -738,31 +744,59 @@ class JiraCollector:
         """
         import re
 
-        # Pattern: "Live - 6/Oct/2025" or "Beta - 6/Oct/2025"
-        # Requires space before and after dash
-        pattern = r'^(Live|Beta)\s+-\s+(\d{1,2})/([A-Za-z]{3})/(\d{4})$'
-        match = re.match(pattern, version_name, re.IGNORECASE)
+        # Pattern 1: "Live - 6/Oct/2025", "Beta WebTC - 28/Aug/2023", "Website - 26/Jan/2012"
+        # Pattern 2: "RA_Web_YYYY_MM_DD" (LENS8 project)
 
-        if not match:
-            return None
+        # Try Pattern 1 first (Live/Beta/Website format)
+        pattern1 = r'^(Live|Beta|Website)(?:\s+\w+)?\s+-\s+(\d{1,2})/([A-Za-z]{3})/(\d{4})$'
+        match = re.match(pattern1, version_name, re.IGNORECASE)
 
-        env_type = match.group(1).lower()  # "live" or "beta"
-        day = int(match.group(2))           # 6
-        month_name = match.group(3)         # "Oct"
-        year = int(match.group(4))          # 2025
+        if match:
+            env_type = match.group(1).lower()  # "live", "beta", or "website"
+            day = int(match.group(2))           # 6
+            month_name = match.group(3)         # "Oct"
+            year = int(match.group(4))          # 2025
 
-        # Parse date
-        try:
-            date_str = f"{day}/{month_name}/{year}"
-            published_at = datetime.strptime(date_str, '%d/%b/%Y')
+            # Parse date
+            try:
+                date_str = f"{day}/{month_name}/{year}"
+                published_at = datetime.strptime(date_str, '%d/%b/%Y')
 
-            # Make timezone-aware (UTC)
-            from datetime import timezone
-            published_at = published_at.replace(tzinfo=timezone.utc)
+                # Make timezone-aware (UTC)
+                from datetime import timezone
+                published_at = published_at.replace(tzinfo=timezone.utc)
 
-        except ValueError as e:
-            print(f"  Warning: Could not parse date from '{version_name}': {e}")
-            return None
+            except ValueError as e:
+                print(f"  Warning: Could not parse date from '{version_name}': {e}")
+                return None
+
+            # Determine environment: "live" and "website" → production, "beta" → staging
+            is_production = env_type in ['live', 'website']
+            is_prerelease = (env_type == 'beta')
+
+        else:
+            # Try Pattern 2 (RA_Web_YYYY_MM_DD format)
+            pattern2 = r'^RA_Web_(\d{4})_(\d{2})_(\d{2})$'
+            match = re.match(pattern2, version_name, re.IGNORECASE)
+
+            if not match:
+                return None  # No pattern matched
+
+            year = int(match.group(1))   # 2025
+            month = int(match.group(2))  # 12
+            day = int(match.group(3))    # 25
+
+            # Parse date
+            try:
+                from datetime import timezone
+                published_at = datetime(year, month, day, tzinfo=timezone.utc)
+            except ValueError as e:
+                print(f"  Warning: Could not parse date from '{version_name}': {e}")
+                return None
+
+            # RA_Web releases are production
+            is_production = True
+            is_prerelease = False
 
         # Map to DORA structure
         return {
@@ -770,11 +804,11 @@ class JiraCollector:
             'release_name': version_name,
             'published_at': published_at,
             'created_at': published_at,  # Same as published for Jira versions
-            'environment': 'production' if env_type == 'live' else 'staging',
+            'environment': 'production' if is_production else 'staging',
             'author': 'jira',  # Jira versions don't have author
             'commit_sha': None,  # No direct git mapping
             'committed_date': published_at,
-            'is_prerelease': (env_type == 'beta')
+            'is_prerelease': is_prerelease
         }
 
     def _get_issues_for_version(self, project_key: str, version_name: str) -> List[str]:

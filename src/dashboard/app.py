@@ -10,15 +10,23 @@ from src.config import Config
 from src.collectors.github_graphql_collector import GitHubGraphQLCollector
 from src.collectors.jira_collector import JiraCollector
 from src.models.metrics import MetricsCalculator
+from src.utils.date_ranges import parse_date_range, get_cache_filename, get_preset_ranges, DateRangeError
 import pandas as pd
 
 app = Flask(__name__)
 
-# Context processor to inject current year into all templates
+# Context processor to inject current year and date range info into all templates
 @app.context_processor
-def inject_current_year():
-    """Inject current year for footer copyright"""
-    return {'current_year': datetime.now().year}
+def inject_template_globals():
+    """Inject global template variables"""
+    range_key = request.args.get('range', '90d')
+    date_range_info = metrics_cache.get('date_range', {})
+    return {
+        'current_year': datetime.now().year,
+        'current_range': range_key,
+        'available_ranges': get_available_ranges(),
+        'date_range_info': date_range_info
+    }
 
 # Global cache
 metrics_cache = {
@@ -26,12 +34,21 @@ metrics_cache = {
     'timestamp': None
 }
 
-def load_cache_from_file():
-    """Load cached metrics from file if available"""
+def load_cache_from_file(range_key='90d'):
+    """Load cached metrics from file for a specific date range
+
+    Args:
+        range_key: Date range key (e.g., '90d', 'Q1-2025')
+
+    Returns:
+        bool: True if cache loaded successfully
+    """
     import pickle
     from pathlib import Path
 
-    cache_file = Path(__file__).parent.parent.parent / 'data' / 'metrics_cache.pkl'
+    cache_filename = get_cache_filename(range_key)
+    cache_file = Path(__file__).parent.parent.parent / 'data' / cache_filename
+
     if cache_file.exists():
         try:
             with open(cache_file, 'rb') as f:
@@ -43,16 +60,65 @@ def load_cache_from_file():
                     # New format: teams, persons, comparison at top level
                     metrics_cache['data'] = cache_data
                 metrics_cache['timestamp'] = cache_data.get('timestamp')
+                metrics_cache['range_key'] = range_key
+                metrics_cache['date_range'] = cache_data.get('date_range', {})
                 print(f"Loaded cached metrics from {cache_file}")
                 print(f"Cache timestamp: {metrics_cache['timestamp']}")
+                if metrics_cache['date_range']:
+                    print(f"Date range: {metrics_cache['date_range'].get('description')}")
                 return True
         except Exception as e:
             print(f"Failed to load cache: {e}")
             return False
     return False
 
-# Try to load cache on startup
-load_cache_from_file()
+def get_available_ranges():
+    """Get list of available cached date ranges
+
+    Returns:
+        list: List of (range_key, description, file_exists) tuples
+    """
+    import pickle
+    from pathlib import Path
+
+    data_dir = Path(__file__).parent.parent.parent / 'data'
+    available = []
+
+    # Check preset ranges
+    for range_spec, description in get_preset_ranges():
+        cache_file = data_dir / get_cache_filename(range_spec)
+        if cache_file.exists():
+            # Try to load date range info from cache
+            try:
+                with open(cache_file, 'rb') as f:
+                    cache_data = pickle.load(f)
+                    if 'date_range' in cache_data:
+                        description = cache_data['date_range'].get('description', description)
+            except:
+                pass
+            available.append((range_spec, description, True))
+
+    # Check for other cached files (quarters, years, custom)
+    if data_dir.exists():
+        for cache_file in data_dir.glob('metrics_cache_*.pkl'):
+            range_key = cache_file.stem.replace('metrics_cache_', '')
+            if range_key not in [r[0] for r in available]:
+                # Try to get description from cache
+                try:
+                    with open(cache_file, 'rb') as f:
+                        cache_data = pickle.load(f)
+                        if 'date_range' in cache_data:
+                            description = cache_data['date_range'].get('description', range_key)
+                        else:
+                            description = range_key
+                        available.append((range_key, description, True))
+                except:
+                    available.append((range_key, range_key, True))
+
+    return available
+
+# Try to load default cache on startup (90d)
+load_cache_from_file('90d')
 
 def get_config():
     """Load configuration"""
@@ -275,11 +341,25 @@ def index():
     """Main dashboard page - shows team overview"""
     config = get_config()
 
+    # Get requested date range from query parameter (default: 90d)
+    range_key = request.args.get('range', '90d')
+
+    # Load cache for requested range (if not already loaded)
+    if metrics_cache.get('range_key') != range_key:
+        load_cache_from_file(range_key)
+
     # If no cache exists, show loading page
     if metrics_cache['data'] is None:
-        return render_template('loading.html')
+        available_ranges = get_available_ranges()
+        return render_template('loading.html',
+                             available_ranges=available_ranges,
+                             selected_range=range_key)
 
     cache = metrics_cache['data']
+
+    # Get available ranges for selector
+    available_ranges = get_available_ranges()
+    date_range_info = metrics_cache.get('date_range', {})
 
     # Check if we have the new team-based structure
     if 'teams' in cache:
@@ -308,12 +388,18 @@ def index():
                              teams=team_list,
                              cache=cache,
                              config=config,
-                             updated_at=metrics_cache['timestamp'])
+                             updated_at=metrics_cache['timestamp'],
+                             available_ranges=available_ranges,
+                             selected_range=range_key,
+                             date_range_info=date_range_info)
     else:
         # Legacy structure - use old dashboard
         return render_template('dashboard.html',
                              metrics=cache,
-                             updated_at=metrics_cache['timestamp'])
+                             updated_at=metrics_cache['timestamp'],
+                             available_ranges=available_ranges,
+                             selected_range=range_key,
+                             date_range_info=date_range_info)
 
 @app.route('/api/metrics')
 def api_metrics():
@@ -372,6 +458,13 @@ def collect():
 def team_dashboard(team_name):
     """Team-specific dashboard"""
     config = get_config()
+
+    # Get requested date range from query parameter (default: 90d)
+    range_key = request.args.get('range', '90d')
+
+    # Load cache for requested range (if not already loaded)
+    if metrics_cache.get('range_key') != range_key:
+        load_cache_from_file(range_key)
 
     if metrics_cache['data'] is None:
         return render_template('loading.html')
@@ -439,8 +532,15 @@ def team_dashboard(team_name):
 
 @app.route('/person/<username>')
 def person_dashboard(username):
-    """Person-specific dashboard showing last 90 days of metrics"""
+    """Person-specific dashboard"""
     config = get_config()
+
+    # Get requested date range from query parameter (default: 90d)
+    range_key = request.args.get('range', '90d')
+
+    # Load cache for requested range (if not already loaded)
+    if metrics_cache.get('range_key') != range_key:
+        load_cache_from_file(range_key)
 
     if metrics_cache['data'] is None:
         return render_template('loading.html')
@@ -511,6 +611,13 @@ def person_dashboard(username):
 def team_members_comparison(team_name):
     """Compare all team members side-by-side"""
     config = get_config()
+
+    # Get requested date range from query parameter (default: 90d)
+    range_key = request.args.get('range', '90d')
+
+    # Load cache for requested range (if not already loaded)
+    if metrics_cache.get('range_key') != range_key:
+        load_cache_from_file(range_key)
 
     if metrics_cache['data'] is None:
         return render_template('loading.html')
@@ -599,6 +706,15 @@ def documentation():
 @app.route('/comparison')
 def team_comparison():
     """Side-by-side team comparison"""
+    config = get_config()
+
+    # Get requested date range from query parameter (default: 90d)
+    range_key = request.args.get('range', '90d')
+
+    # Load cache for requested range (if not already loaded)
+    if metrics_cache.get('range_key') != range_key:
+        load_cache_from_file(range_key)
+
     if metrics_cache['data'] is None:
         return render_template('loading.html')
 
@@ -607,8 +723,6 @@ def team_comparison():
     if 'comparison' not in cache:
         return render_template('error.html',
                              error="Team comparison requires team configuration.")
-
-    config = get_config()
 
     # Build team_configs dict for easy lookup in template
     team_configs = {team['name']: team for team in config.teams}

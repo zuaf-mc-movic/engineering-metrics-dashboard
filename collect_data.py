@@ -440,8 +440,10 @@ else:
         # Collect releases from Jira Fix Versions instead of GitHub
         if jira_collector:
             print(f"\n🚀 Collecting releases from Jira Fix Versions for {team_display}...")
+            # Use team-specific project keys if available, otherwise use global keys
+            team_project_keys = team.get('jira', {}).get('project_keys', jira_collector.project_keys)
             jira_releases = jira_collector.collect_releases_from_fix_versions(
-                project_keys=jira_collector.project_keys
+                project_keys=team_project_keys
             )
             all_github_data['releases'].extend(jira_releases)  # Still use 'releases' key for DORA metrics
             print(f"   - Releases (from Jira): {len(jira_releases)}")
