@@ -438,6 +438,7 @@ else:
             jira_filter_results = jira_collector.collect_team_filters(filter_ids)
 
         # Collect releases from Jira Fix Versions instead of GitHub
+        jira_releases = []
         if jira_collector:
             print(f"\n🚀 Collecting releases from Jira Fix Versions for {team_display}...")
             # Use team-specific project keys if available, otherwise use global keys
@@ -445,7 +446,6 @@ else:
             jira_releases = jira_collector.collect_releases_from_fix_versions(
                 project_keys=team_project_keys
             )
-            all_github_data['releases'].extend(jira_releases)  # Still use 'releases' key for DORA metrics
             print(f"   - Releases (from Jira): {len(jira_releases)}")
 
         # Calculate team metrics
@@ -465,7 +465,7 @@ else:
             'reviews': pd.DataFrame(team_github_data['reviews']),
             'commits': pd.DataFrame(team_github_data['commits']),
             'deployments': pd.DataFrame(team_github_data['deployments']),
-            'releases': pd.DataFrame(all_github_data['releases'])  # Use all collected releases (from Jira)
+            'releases': pd.DataFrame(jira_releases)  # Use team-specific releases from Jira Fix Versions
         }
 
         calculator = MetricsCalculator(team_dfs)

@@ -731,8 +731,10 @@ class JiraCollector:
         """Parse Jira Fix Version name into release structure
 
         Supported formats:
-        - "Live - 6/Oct/2025" or "Beta - 15/Jan/2026" (production/staging)
-        - "Beta WebTC - 28/Aug/2023" (with product name)
+        - "Live - 6/Oct/2025" (production)
+        - "Beta - 15/Jan/2026" (staging)
+        - "Preview - 20/Jan/2026" (staging/preview)
+        - "Beta WebTC - 28/Aug/2023" (staging with product name)
         - "Website - 26/Jan/2012" (production)
         - "RA_Web_YYYY_MM_DD" (LENS8 project, production)
 
@@ -747,12 +749,12 @@ class JiraCollector:
         # Pattern 1: "Live - 6/Oct/2025", "Beta WebTC - 28/Aug/2023", "Website - 26/Jan/2012"
         # Pattern 2: "RA_Web_YYYY_MM_DD" (LENS8 project)
 
-        # Try Pattern 1 first (Live/Beta/Website format)
-        pattern1 = r'^(Live|Beta|Website)(?:\s+\w+)?\s+-\s+(\d{1,2})/([A-Za-z]{3})/(\d{4})$'
+        # Try Pattern 1 first (Live/Beta/Website/Preview format)
+        pattern1 = r'^(Live|Beta|Website|Preview)(?:\s+\w+)?\s+-\s+(\d{1,2})/([A-Za-z]{3})/(\d{4})$'
         match = re.match(pattern1, version_name, re.IGNORECASE)
 
         if match:
-            env_type = match.group(1).lower()  # "live", "beta", or "website"
+            env_type = match.group(1).lower()  # "live", "beta", "website", or "preview"
             day = int(match.group(2))           # 6
             month_name = match.group(3)         # "Oct"
             year = int(match.group(4))          # 2025
@@ -770,9 +772,11 @@ class JiraCollector:
                 print(f"  Warning: Could not parse date from '{version_name}': {e}")
                 return None
 
-            # Determine environment: "live" and "website" → production, "beta" → staging
+            # Determine environment:
+            # - "live" and "website" → production
+            # - "beta" and "preview" → staging
             is_production = env_type in ['live', 'website']
-            is_prerelease = (env_type == 'beta')
+            is_prerelease = (env_type in ['beta', 'preview'])
 
         else:
             # Try Pattern 2 (RA_Web_YYYY_MM_DD format)
