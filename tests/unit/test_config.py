@@ -346,3 +346,230 @@ class TestConfigValidation:
             assert config.days_back == 90
         finally:
             Path(temp_path).unlink(missing_ok=True)
+
+
+class TestPerformanceWeights:
+    """Tests for performance weights configuration"""
+
+    def test_performance_weights_default_values(self, temp_config_file):
+        """Test that default weights are returned when not in config"""
+        config = Config(config_path=temp_config_file)
+        weights = config.performance_weights
+
+        assert weights == {
+            'prs': 0.20,
+            'reviews': 0.20,
+            'commits': 0.15,
+            'cycle_time': 0.15,
+            'jira_completed': 0.20,
+            'merge_rate': 0.10
+        }
+
+    def test_performance_weights_custom_values(self):
+        """Test loading custom performance weights from config"""
+        config_dict = {
+            'performance_weights': {
+                'prs': 0.25,
+                'reviews': 0.25,
+                'commits': 0.10,
+                'cycle_time': 0.10,
+                'jira_completed': 0.20,
+                'merge_rate': 0.10
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(config_dict, f)
+            temp_path = f.name
+
+        try:
+            config = Config(config_path=temp_path)
+            weights = config.performance_weights
+
+            assert weights['prs'] == 0.25
+            assert weights['reviews'] == 0.25
+            assert weights['commits'] == 0.10
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def test_performance_weights_sum_validation(self):
+        """Test that weights must sum to 1.0"""
+        config_dict = {
+            'performance_weights': {
+                'prs': 0.30,  # Sum = 1.10 (invalid)
+                'reviews': 0.30,
+                'commits': 0.20,
+                'cycle_time': 0.10,
+                'jira_completed': 0.10,
+                'merge_rate': 0.10
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(config_dict, f)
+            temp_path = f.name
+
+        try:
+            config = Config(config_path=temp_path)
+            with pytest.raises(ValueError, match="Performance weights must sum to 1.0"):
+                _ = config.performance_weights
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def test_performance_weights_individual_value_validation(self):
+        """Test that individual weights must be between 0.0 and 1.0"""
+        config_dict = {
+            'performance_weights': {
+                'prs': 1.50,  # Invalid: > 1.0
+                'reviews': -0.30,  # Invalid: < 0.0
+                'commits': 0.10,
+                'cycle_time': 0.10,
+                'jira_completed': 0.10,
+                'merge_rate': 0.10
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(config_dict, f)
+            temp_path = f.name
+
+        try:
+            config = Config(config_path=temp_path)
+            with pytest.raises(ValueError, match="must be between 0.0 and 1.0"):
+                _ = config.performance_weights
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def test_update_performance_weights_valid(self):
+        """Test updating weights with valid values"""
+        config_dict = {'github': {'token': 'test'}}
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(config_dict, f)
+            temp_path = f.name
+
+        try:
+            config = Config(config_path=temp_path)
+
+            new_weights = {
+                'prs': 0.30,
+                'reviews': 0.25,
+                'commits': 0.10,
+                'cycle_time': 0.10,
+                'jira_completed': 0.15,
+                'merge_rate': 0.10
+            }
+
+            config.update_performance_weights(new_weights)
+
+            # Verify weights were updated
+            assert config.performance_weights == new_weights
+
+            # Verify file was written
+            with open(temp_path, 'r') as f:
+                saved_config = yaml.safe_load(f)
+                assert saved_config['performance_weights'] == new_weights
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def test_update_performance_weights_invalid_sum(self):
+        """Test that updating with invalid sum raises error"""
+        config_dict = {'github': {'token': 'test'}}
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(config_dict, f)
+            temp_path = f.name
+
+        try:
+            config = Config(config_path=temp_path)
+
+            invalid_weights = {
+                'prs': 0.40,
+                'reviews': 0.40,  # Sum = 1.15 (invalid)
+                'commits': 0.10,
+                'cycle_time': 0.10,
+                'jira_completed': 0.10,
+                'merge_rate': 0.05
+            }
+
+            with pytest.raises(ValueError, match="Weights must sum to 1.0"):
+                config.update_performance_weights(invalid_weights)
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def test_update_performance_weights_invalid_individual_value(self):
+        """Test that updating with invalid individual value raises error"""
+        config_dict = {'github': {'token': 'test'}}
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(config_dict, f)
+            temp_path = f.name
+
+        try:
+            config = Config(config_path=temp_path)
+
+            invalid_weights = {
+                'prs': -0.10,  # Invalid: negative
+                'reviews': 0.30,
+                'commits': 0.20,
+                'cycle_time': 0.20,
+                'jira_completed': 0.20,
+                'merge_rate': 0.20
+            }
+
+            with pytest.raises(ValueError, match="must be between 0.0 and 1.0"):
+                config.update_performance_weights(invalid_weights)
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def test_performance_weights_sum_tolerance(self):
+        """Test that float precision tolerance is applied (±0.001)"""
+        config_dict = {
+            'performance_weights': {
+                'prs': 0.2001,  # Slightly over due to float precision
+                'reviews': 0.2001,
+                'commits': 0.15,
+                'cycle_time': 0.15,
+                'jira_completed': 0.1998,
+                'merge_rate': 0.10
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(config_dict, f)
+            temp_path = f.name
+
+        try:
+            config = Config(config_path=temp_path)
+            # Should not raise error due to tolerance
+            weights = config.performance_weights
+            assert weights is not None
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def test_performance_weights_persistence(self):
+        """Test that updated weights persist across config reloads"""
+        config_dict = {'github': {'token': 'test'}}
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(config_dict, f)
+            temp_path = f.name
+
+        try:
+            # Update weights
+            config1 = Config(config_path=temp_path)
+            new_weights = {
+                'prs': 0.35,
+                'reviews': 0.25,
+                'commits': 0.05,
+                'cycle_time': 0.10,
+                'jira_completed': 0.15,
+                'merge_rate': 0.10
+            }
+            config1.update_performance_weights(new_weights)
+
+            # Load new config instance and verify
+            config2 = Config(config_path=temp_path)
+            assert config2.performance_weights == new_weights
+        finally:
+            Path(temp_path).unlink(missing_ok=True)

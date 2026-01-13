@@ -96,7 +96,7 @@ tail -f logs/collect_data.log
 # Install test dependencies
 pip install -r requirements-dev.txt
 
-# Run all tests (111+ tests, ~2.5 seconds)
+# Run all tests (135+ tests, ~2.5 seconds)
 pytest
 
 # Run with coverage report
@@ -118,6 +118,12 @@ pytest -m "not slow"
 
 **Test Organization:**
 - `tests/unit/` - Pure logic and utility function tests (95%+ coverage target)
+  - `test_dora_trends.py` - 13 tests for DORA trend calculations (NEW)
+  - `test_performance_score.py` - 19 tests for performance scoring
+  - `test_config.py` - 27 tests for configuration validation
+  - `test_metrics_calculator.py` - 30+ tests for metrics calculations
+  - `test_time_periods.py` - 30+ tests for date utilities
+  - `test_activity_thresholds.py` - 15+ tests for thresholds
 - `tests/collectors/` - API response parsing tests (70%+ coverage target)
 - `tests/fixtures/` - Mock data generators for consistent test data
 - `tests/conftest.py` - Shared pytest fixtures

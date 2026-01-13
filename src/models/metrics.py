@@ -250,7 +250,8 @@ class MetricsCalculator:
                 'per_week': 0,
                 'per_month': 0,
                 'level': 'low',
-                'badge_class': 'low'
+                'badge_class': 'low',
+                'trend': {}
             }
 
         # Filter to production releases only
@@ -263,7 +264,8 @@ class MetricsCalculator:
                 'per_week': 0,
                 'per_month': 0,
                 'level': 'low',
-                'badge_class': 'low'
+                'badge_class': 'low',
+                'trend': {}
             }
 
         total = len(production_releases)
@@ -325,7 +327,8 @@ class MetricsCalculator:
                 'average_hours': None,
                 'sample_size': 0,
                 'level': 'low',
-                'badge_class': 'low'
+                'badge_class': 'low',
+                'trend': {}
             }
 
         # Filter to production releases and merged PRs
@@ -396,7 +399,8 @@ class MetricsCalculator:
                 'average_hours': None,
                 'sample_size': 0,
                 'level': 'low',
-                'badge_class': 'low'
+                'badge_class': 'low',
+                'trend': {}
             }
 
         median_hours = float(pd.Series(lead_times).median())
@@ -519,7 +523,8 @@ class MetricsCalculator:
                 'failed_deployments': 0,
                 'total_deployments': 0,
                 'level': 'low',
-                'badge_class': 'low'
+                'badge_class': 'low',
+                'trend': {}
             }
 
         # Filter to production releases
@@ -536,7 +541,8 @@ class MetricsCalculator:
                 'failed_deployments': 0,
                 'total_deployments': 0,
                 'level': 'low',
-                'badge_class': 'low'
+                'badge_class': 'low',
+                'trend': {}
             }
 
         # Without incident data, we can't calculate failure rate
@@ -547,7 +553,8 @@ class MetricsCalculator:
                 'total_deployments': total_deployments,
                 'level': 'unknown',
                 'badge_class': 'low',
-                'note': 'Incident data not available'
+                'note': 'Incident data not available',
+                'trend': {}
             }
 
         # Correlate incidents to deployments
@@ -650,7 +657,8 @@ class MetricsCalculator:
                 'sample_size': 0,
                 'level': 'unknown',
                 'badge_class': 'low',
-                'note': 'Incident data not available'
+                'note': 'Incident data not available',
+                'trend': {}
             }
 
         # Calculate resolution times for resolved incidents
@@ -680,7 +688,8 @@ class MetricsCalculator:
                 'sample_size': 0,
                 'level': 'unknown',
                 'badge_class': 'low',
-                'note': 'No resolved incidents in period'
+                'note': 'No resolved incidents in period',
+                'trend': {}
             }
 
         # Calculate statistics
@@ -1327,20 +1336,27 @@ class MetricsCalculator:
             metrics: Dict with individual metrics (prs, reviews, commits, etc.)
             all_metrics_list: List of all metrics dicts for normalization
             team_size: Optional team size for normalizing volume metrics (per-capita)
-            weights: Optional dict of metric weights (defaults to balanced)
+            weights: Optional dict of metric weights (defaults to config or balanced defaults)
 
         Returns:
             Float score between 0-100
         """
         if weights is None:
-            weights = {
-                'prs': 0.20,
-                'reviews': 0.20,
-                'commits': 0.15,
-                'cycle_time': 0.15,  # Lower is better
-                'jira_completed': 0.20,
-                'merge_rate': 0.10
-            }
+            # Try to load from config, fall back to defaults
+            try:
+                from ..config import Config
+                config = Config()
+                weights = config.performance_weights
+            except Exception:
+                # Fall back to default weights if config not available
+                weights = {
+                    'prs': 0.20,
+                    'reviews': 0.20,
+                    'commits': 0.15,
+                    'cycle_time': 0.15,  # Lower is better
+                    'jira_completed': 0.20,
+                    'merge_rate': 0.10
+                }
 
         # If team_size provided, normalize volume metrics to per-capita before scoring
         if team_size and team_size > 0:

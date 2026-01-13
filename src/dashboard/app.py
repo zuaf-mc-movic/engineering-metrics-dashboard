@@ -787,6 +787,101 @@ def team_comparison():
                          days_back=config.days_back,
                          updated_at=metrics_cache['timestamp'])
 
+
+@app.route('/settings')
+def settings():
+    """Render performance score settings page"""
+    config = get_config()
+    current_weights = config.performance_weights
+
+    # Convert to percentages for display
+    weights_pct = {k: v * 100 for k, v in current_weights.items()}
+
+    metric_descriptions = {
+        'prs': 'Pull requests created',
+        'reviews': 'Code reviews given',
+        'commits': 'Commits made',
+        'cycle_time': 'PR cycle time (lower is better)',
+        'jira_completed': 'Jira issues completed',
+        'merge_rate': 'PR merge rate'
+    }
+
+    metric_labels = {
+        'prs': 'Pull Requests',
+        'reviews': 'Code Reviews',
+        'commits': 'Commits',
+        'cycle_time': 'Cycle Time',
+        'jira_completed': 'Jira Completed',
+        'merge_rate': 'Merge Rate'
+    }
+
+    return render_template('settings.html',
+                         weights=weights_pct,
+                         metric_descriptions=metric_descriptions,
+                         metric_labels=metric_labels,
+                         config=config)
+
+
+@app.route('/settings/save', methods=['POST'])
+def save_settings():
+    """Save updated performance weights"""
+    try:
+        # Parse JSON data
+        data = request.get_json()
+
+        # Extract weights (in percentages)
+        weights_pct = {
+            'prs': float(data.get('prs', 20)),
+            'reviews': float(data.get('reviews', 20)),
+            'commits': float(data.get('commits', 15)),
+            'cycle_time': float(data.get('cycle_time', 15)),
+            'jira_completed': float(data.get('jira_completed', 20)),
+            'merge_rate': float(data.get('merge_rate', 10))
+        }
+
+        # Validate sum
+        total = sum(weights_pct.values())
+        if not (99.9 <= total <= 100.1):
+            return jsonify({
+                'success': False,
+                'error': f'Weights must sum to 100%, got {total:.1f}%'
+            }), 400
+
+        # Convert to decimals
+        weights = {k: v / 100 for k, v in weights_pct.items()}
+
+        # Save to config
+        config = get_config()
+        config.update_performance_weights(weights)
+
+        return jsonify({'success': True, 'message': 'Settings saved successfully'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/settings/reset', methods=['POST'])
+def reset_settings():
+    """Reset weights to defaults"""
+    try:
+        default_weights = {
+            'prs': 0.20,
+            'reviews': 0.20,
+            'commits': 0.15,
+            'cycle_time': 0.15,
+            'jira_completed': 0.20,
+            'merge_rate': 0.10
+        }
+
+        config = get_config()
+        config.update_performance_weights(default_weights)
+
+        return jsonify({'success': True, 'message': 'Settings reset to defaults'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 def main():
     config = get_config()
     dashboard_config = config.dashboard_config

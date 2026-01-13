@@ -1,0 +1,404 @@
+{% extends "detail_page.html" %}
+
+{% block title %}Performance Score Settings{% endblock %}
+
+{% block header_title %}Performance Score Settings{% endblock %}
+
+{% block page_description %}
+<p style="color: var(--text-secondary); margin: 10px 0;">
+    Customize the weights used to calculate performance scores.
+</p>
+{% endblock %}
+
+{% block breadcrumb_items %}
+<span> &gt; </span>
+<span>Settings</span>
+{% endblock %}
+
+{% block additional_nav %}{% endblock %}
+
+{% block main_content %}
+<div style="max-width: 900px; margin: 0 auto;">
+
+    <!-- Presets -->
+    <div class="card" style="padding: 25px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 20px 0;">Quick Presets</h3>
+        <div class="presets-grid">
+            <button class="preset" data-preset="balanced">
+                <span class="preset-icon">⚖️</span>
+                <span class="preset-name">Balanced</span>
+                <span class="preset-desc">Equal emphasis on all metrics</span>
+            </button>
+            <button class="preset" data-preset="quality">
+                <span class="preset-icon">🎯</span>
+                <span class="preset-name">Code Quality</span>
+                <span class="preset-desc">Focus on reviews and merge rate</span>
+            </button>
+            <button class="preset" data-preset="velocity">
+                <span class="preset-icon">🚀</span>
+                <span class="preset-name">Velocity</span>
+                <span class="preset-desc">Emphasize output and delivery</span>
+            </button>
+            <button class="preset" data-preset="jira">
+                <span class="preset-icon">📋</span>
+                <span class="preset-name">Jira Focus</span>
+                <span class="preset-desc">Prioritize Jira completion</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Weights -->
+    <div class="card" style="padding: 30px;">
+        <h3 style="margin: 0 0 25px 0;">Adjust Weights</h3>
+
+        <form id="form">
+            <div class="weight-row">
+                <label>Pull Requests</label>
+                <input type="range" id="prs" min="0" max="100" step="5" value="{{ weights.prs|round }}">
+                <span class="value" id="prs-val">{{ weights.prs|round }}%</span>
+            </div>
+
+            <div class="weight-row">
+                <label>Code Reviews</label>
+                <input type="range" id="reviews" min="0" max="100" step="5" value="{{ weights.reviews|round }}">
+                <span class="value" id="reviews-val">{{ weights.reviews|round }}%</span>
+            </div>
+
+            <div class="weight-row">
+                <label>Commits</label>
+                <input type="range" id="commits" min="0" max="100" step="5" value="{{ weights.commits|round }}">
+                <span class="value" id="commits-val">{{ weights.commits|round }}%</span>
+            </div>
+
+            <div class="weight-row">
+                <label>Cycle Time</label>
+                <input type="range" id="cycle_time" min="0" max="100" step="5" value="{{ weights.cycle_time|round }}">
+                <span class="value" id="cycle_time-val">{{ weights.cycle_time|round }}%</span>
+            </div>
+
+            <div class="weight-row">
+                <label>Jira Completed</label>
+                <input type="range" id="jira_completed" min="0" max="100" step="5" value="{{ weights.jira_completed|round }}">
+                <span class="value" id="jira_completed-val">{{ weights.jira_completed|round }}%</span>
+            </div>
+
+            <div class="weight-row">
+                <label>Merge Rate</label>
+                <input type="range" id="merge_rate" min="0" max="100" step="5" value="{{ weights.merge_rate|round }}">
+                <span class="value" id="merge_rate-val">{{ weights.merge_rate|round }}%</span>
+            </div>
+
+            <div class="total-row">
+                <span>Total:</span>
+                <span id="total" class="total-value">100%</span>
+            </div>
+
+            <div id="msg" class="message" style="display: none;"></div>
+
+            <div class="buttons">
+                <button type="button" id="reset" class="btn-secondary">Reset</button>
+                <button type="submit" id="save" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.presets-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 800px) {
+    .presets-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.preset {
+    padding: 20px 15px;
+    background: var(--bg-primary);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    font-family: inherit;
+    color: var(--text-primary);
+}
+
+.preset:hover {
+    border-color: #3498db;
+    transform: translateY(-2px);
+}
+
+.preset-icon {
+    font-size: 2em;
+}
+
+.preset-name {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.preset-desc {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.3;
+}
+
+.weight-row {
+    display: grid;
+    grid-template-columns: 150px 1fr 80px;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.weight-row label {
+    font-weight: 600;
+    font-size: 1.05em;
+}
+
+.weight-row input[type="range"] {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+[data-theme="dark"] .weight-row input[type="range"] {
+    background: #555;
+}
+
+.weight-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3498db;
+    cursor: pointer;
+}
+
+.weight-row input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3498db;
+    cursor: pointer;
+    border: none;
+}
+
+.weight-row .value {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: #3498db;
+    text-align: right;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    margin: 30px 0 20px 0;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 2px solid var(--border-color);
+}
+
+.total-row span:first-child {
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.total-value {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #3498db;
+}
+
+.message {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.message.error {
+    background: #fee;
+    border: 2px solid #fcc;
+    color: #c00;
+}
+
+.message.success {
+    background: #efe;
+    border: 2px solid #cfc;
+    color: #060;
+}
+
+[data-theme="dark"] .message.error {
+    background: #4a2020;
+    border: 2px solid #8a3030;
+    color: #ff6b6b;
+}
+
+[data-theme="dark"] .message.success {
+    background: #204a20;
+    border: 2px solid #308a30;
+    color: #6bff6b;
+}
+
+.buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+}
+
+.btn-primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 2px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    border-color: #3498db;
+    color: #3498db;
+}
+</style>
+
+<script>
+const presets = {
+    balanced: {prs: 20, reviews: 20, commits: 15, cycle_time: 15, jira_completed: 20, merge_rate: 10},
+    quality: {prs: 15, reviews: 30, commits: 10, cycle_time: 10, jira_completed: 15, merge_rate: 20},
+    velocity: {prs: 25, reviews: 15, commits: 20, cycle_time: 10, jira_completed: 25, merge_rate: 5},
+    jira: {prs: 15, reviews: 15, commits: 10, cycle_time: 10, jira_completed: 35, merge_rate: 15}
+};
+
+const sliders = ['prs', 'reviews', 'commits', 'cycle_time', 'jira_completed', 'merge_rate'];
+const form = document.getElementById('form');
+const totalEl = document.getElementById('total');
+const msgEl = document.getElementById('msg');
+const saveBtn = document.getElementById('save');
+const resetBtn = document.getElementById('reset');
+
+function update() {
+    let total = 0;
+    sliders.forEach(id => {
+        const val = parseInt(document.getElementById(id).value);
+        total += val;
+        document.getElementById(id + '-val').textContent = val + '%';
+    });
+
+    totalEl.textContent = total + '%';
+    totalEl.style.color = (total === 100) ? '#3498db' : '#e74c3c';
+
+    if (total !== 100) {
+        msgEl.style.display = 'block';
+        msgEl.className = 'message error';
+        msgEl.textContent = '⚠️ Total must equal 100%';
+        saveBtn.disabled = true;
+    } else {
+        msgEl.style.display = 'none';
+        saveBtn.disabled = false;
+    }
+}
+
+sliders.forEach(id => {
+    document.getElementById(id).addEventListener('input', update);
+});
+
+document.querySelectorAll('.preset').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const preset = presets[this.dataset.preset];
+        sliders.forEach(id => {
+            document.getElementById(id).value = preset[id];
+        });
+        update();
+    });
+});
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const weights = {};
+    sliders.forEach(id => {
+        weights[id] = parseInt(document.getElementById(id).value);
+    });
+
+    try {
+        const res = await fetch('/settings/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(weights)
+        });
+        const data = await res.json();
+
+        msgEl.style.display = 'block';
+        if (data.success) {
+            msgEl.className = 'message success';
+            msgEl.textContent = '✓ Saved!';
+            setTimeout(() => msgEl.style.display = 'none', 2000);
+        } else {
+            msgEl.className = 'message error';
+            msgEl.textContent = '❌ ' + data.error;
+        }
+    } catch (err) {
+        msgEl.style.display = 'block';
+        msgEl.className = 'message error';
+        msgEl.textContent = '❌ Error: ' + err.message;
+    }
+});
+
+resetBtn.addEventListener('click', async () => {
+    if (!confirm('Reset to defaults?')) return;
+
+    try {
+        const res = await fetch('/settings/reset', {method: 'POST'});
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        }
+    } catch (err) {
+        msgEl.style.display = 'block';
+        msgEl.className = 'message error';
+        msgEl.textContent = '❌ Error: ' + err.message;
+    }
+});
+
+update();
+</script>
+
+{% endblock %}

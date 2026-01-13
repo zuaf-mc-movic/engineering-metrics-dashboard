@@ -162,3 +162,14 @@ dashboard:
   port: 5000
   debug: true
   cache_duration_minutes: 60
+
+# Performance score weights
+# These weights determine how different metrics contribute to the overall performance score
+# used in team and member comparisons. All weights must sum to 1.0 (100%).
+performance_weights:
+  prs: 0.20              # Pull requests created (20%)
+  reviews: 0.20          # Code reviews given (20%)
+  commits: 0.15          # Commits made (15%)
+  cycle_time: 0.15       # PR cycle time - lower is better (15%)
+  jira_completed: 0.20   # Jira issues completed (20%)
+  merge_rate: 0.10       # PR merge rate (10%)

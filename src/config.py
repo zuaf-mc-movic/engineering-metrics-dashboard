@@ -83,3 +83,64 @@ class Config:
                 return team
         return None
 
+    @property
+    def performance_weights(self):
+        """Get performance score weights from config with validation
+
+        Returns:
+            dict: Weight values for each metric (keys: prs, reviews, commits,
+                  cycle_time, jira_completed, merge_rate)
+
+        Raises:
+            ValueError: If weights don't sum to 1.0 (within tolerance)
+        """
+        # Default weights if not configured
+        default_weights = {
+            'prs': 0.20,
+            'reviews': 0.20,
+            'commits': 0.15,
+            'cycle_time': 0.15,
+            'jira_completed': 0.20,
+            'merge_rate': 0.10
+        }
+
+        weights = self.config.get('performance_weights', default_weights)
+
+        # Validate individual weights are in valid range (check this first)
+        for metric, weight in weights.items():
+            if not (0.0 <= weight <= 1.0):
+                raise ValueError(f"Weight for {metric} must be between 0.0 and 1.0, got {weight}")
+
+        # Validate weights sum to 1.0 (with tolerance for float precision)
+        total = sum(weights.values())
+        if not (0.999 <= total <= 1.001):
+            raise ValueError(f"Performance weights must sum to 1.0, got {total}")
+
+        return weights
+
+    def update_performance_weights(self, weights):
+        """Update performance weights in config file
+
+        Args:
+            weights (dict): New weight values for each metric
+
+        Raises:
+            ValueError: If weights are invalid (don't sum to 1.0 or out of range)
+        """
+        # Validate individual weights (check this first)
+        for metric, weight in weights.items():
+            if not (0.0 <= weight <= 1.0):
+                raise ValueError(f"Weight for {metric} must be between 0.0 and 1.0, got {weight}")
+
+        # Validate sum
+        total = sum(weights.values())
+        if not (0.999 <= total <= 1.001):
+            raise ValueError(f"Weights must sum to 1.0, got {total}")
+
+        # Update in-memory config
+        self.config['performance_weights'] = weights
+
+        # Write to file
+        with open(self.config_path, 'w') as f:
+            yaml.dump(self.config, f, default_flow_style=False, sort_keys=False)
+

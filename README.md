@@ -104,12 +104,15 @@ team_metrics/
 │   │           └── charts.js            # Shared chart utilities and CHART_COLORS
 │   ├── config.py                        # Configuration loader
 │   └── __init__.py
-├── tests/                               # Unit test suite (111+ tests, 83% coverage)
+├── tests/                               # Unit test suite (135+ tests, 83% coverage)
 │   ├── unit/
 │   │   ├── test_time_periods.py         # 30+ tests for date utilities
 │   │   ├── test_activity_thresholds.py  # 15+ tests for thresholds
 │   │   ├── test_collect_data.py         # 14+ tests for data collection helpers
-│   │   └── test_metrics_calculator.py   # 30+ tests for metrics calculations
+│   │   ├── test_metrics_calculator.py   # 30+ tests for metrics calculations
+│   │   ├── test_dora_trends.py          # 13 tests for DORA trend calculations
+│   │   ├── test_performance_score.py    # 19 tests for performance scoring
+│   │   └── test_config.py               # 27 tests for configuration validation
 │   ├── collectors/
 │   │   ├── test_github_collector.py     # 10+ tests for GitHub GraphQL parsing
 │   │   └── test_jira_collector.py       # 12+ tests for Jira API parsing
@@ -240,7 +243,7 @@ Access the dashboard at:
 # Install test dependencies
 pip install -r requirements-dev.txt
 
-# Run test suite (111+ tests, should complete in ~2.5 seconds)
+# Run test suite (135+ tests, should complete in ~2.5 seconds)
 pytest
 
 # Check coverage (should show 83%+ overall)

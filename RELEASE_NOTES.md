@@ -22,6 +22,10 @@ Major cleanup and documentation release preparing the Team Metrics Dashboard for
   - Backend: Added trend calculations to `_calculate_lead_time_for_changes()`, `_calculate_change_failure_rate()`, `_calculate_mttr()` in metrics.py
   - Frontend: Three new Plotly charts in team_dashboard.html with theme-aware styling
   - Homepage: Reorganized teams_overview.html with `.metrics-section` styling
+- **Testing:**
+  - Added comprehensive test suite: `tests/unit/test_dora_trends.py` (13 tests, all passing)
+  - Test coverage: Deployment Frequency, Lead Time, CFR, MTTR trends
+  - Edge cases: Empty data, no incidents, Jira mapping, JSON serialization
 - **Notes:** CFR and MTTR trends only display when incident data is available
 - **Status:** All 4 DORA metrics now have weekly trend visualization
 
