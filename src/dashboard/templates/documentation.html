@@ -210,6 +210,202 @@
     </div>
 </div>
 
+<!-- DORA Metrics -->
+<div class="card">
+    <h2>📈 DORA Metrics</h2>
+
+    <div class="faq-section">
+        <h3>What are DORA Metrics?</h3>
+        <div class="faq-answer">
+            DORA (DevOps Research and Assessment) metrics are industry-standard measurements of software delivery performance. These four key metrics help teams understand their deployment velocity, stability, and incident response capabilities. Performance is classified into four levels: <strong>Elite</strong>, <strong>High</strong>, <strong>Medium</strong>, and <strong>Low</strong> based on research from thousands of organizations.
+        </div>
+    </div>
+
+    <div class="faq-section">
+        <h3>1. Deployment Frequency</h3>
+
+        <div class="faq-item">
+            <div class="faq-question">What does it measure?</div>
+            <div class="faq-answer">
+                How often your team deploys code to production. Measured as deployments per week.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How is it calculated?</div>
+            <div class="faq-answer">
+                Uses <strong>Jira Fix Versions</strong> (not GitHub Releases) to track deployments:
+                <ul>
+                    <li>Releases matching pattern "Live - D/MMM/YYYY" are counted as production</li>
+                    <li>Other patterns (e.g., "Staging") are filtered out</li>
+                    <li>Deployments are counted within the 90-day window</li>
+                    <li>Rate calculated as: (Total deployments / Days) × 7</li>
+                </ul>
+                A weekly trend chart shows deployment volume over time.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Performance Levels</div>
+            <div class="faq-answer">
+                <ul>
+                    <li><strong>Elite:</strong> More than 7 deployments per week (on-demand deployment)</li>
+                    <li><strong>High:</strong> 1-7 deployments per week</li>
+                    <li><strong>Medium:</strong> 1-4 deployments per month</li>
+                    <li><strong>Low:</strong> Less than 1 deployment per month</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="faq-section">
+        <h3>2. Lead Time for Changes</h3>
+
+        <div class="faq-item">
+            <div class="faq-question">What does it measure?</div>
+            <div class="faq-answer">
+                Time from code commit to running in production. Measures how quickly changes move through your delivery pipeline.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How is it calculated?</div>
+            <div class="faq-answer">
+                Uses a two-tier approach:
+                <ol>
+                    <li><strong>Jira-based (preferred):</strong> PR includes Jira issue key → Issue mapped to Fix Version → Time from PR merge to Fix Version release date</li>
+                    <li><strong>Time-based (fallback):</strong> Time from PR merge to next deployment after merge</li>
+                </ol>
+                The median lead time across all PRs in the period is displayed. PRs without Jira issues use the fallback method.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Performance Levels</div>
+            <div class="faq-answer">
+                <ul>
+                    <li><strong>Elite:</strong> Less than 1 day</li>
+                    <li><strong>High:</strong> 1-7 days</li>
+                    <li><strong>Medium:</strong> 1-4 weeks</li>
+                    <li><strong>Low:</strong> More than 4 weeks</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="faq-section">
+        <h3>3. Change Failure Rate (CFR)</h3>
+
+        <div class="faq-item">
+            <div class="faq-question">What does it measure?</div>
+            <div class="faq-answer">
+                Percentage of deployments that cause production incidents. Indicates deployment stability and quality.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How is it calculated?</div>
+            <div class="faq-answer">
+                <strong>Requires incident tracking setup (see below).</strong>
+                <ul>
+                    <li>Incidents are fetched from your Jira <code>incidents</code> filter</li>
+                    <li>Incidents correlated to deployments using two methods:
+                        <ul>
+                            <li><strong>Direct:</strong> Incident has Fix Version matching deployment name</li>
+                            <li><strong>Time-based:</strong> Incident created within 24 hours after deployment</li>
+                        </ul>
+                    </li>
+                    <li>Calculation: (Failed deployments / Total deployments) × 100</li>
+                </ul>
+                Shows "—" if no incidents in period (which is excellent!).
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Performance Levels</div>
+            <div class="faq-answer">
+                <ul>
+                    <li><strong>Elite:</strong> Less than 15% (fewer than 1 in 7 deployments fail)</li>
+                    <li><strong>High:</strong> 15-16%</li>
+                    <li><strong>Medium:</strong> 16-30%</li>
+                    <li><strong>Low:</strong> More than 30%</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="faq-section">
+        <h3>4. Mean Time to Recovery (MTTR)</h3>
+
+        <div class="faq-item">
+            <div class="faq-question">What does it measure?</div>
+            <div class="faq-answer">
+                How quickly your team recovers from production incidents. Measured as median time from incident creation to resolution.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How is it calculated?</div>
+            <div class="faq-answer">
+                <strong>Requires incident tracking setup (see below).</strong>
+                <ul>
+                    <li>Incidents fetched from your Jira <code>incidents</code> filter</li>
+                    <li>Resolution time = (Resolved timestamp - Created timestamp)</li>
+                    <li>Median of all resolved incidents is displayed</li>
+                    <li>P95 (95th percentile) also shown for outlier awareness</li>
+                </ul>
+                Shows "—" if no resolved incidents in period.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Performance Levels</div>
+            <div class="faq-answer">
+                <ul>
+                    <li><strong>Elite:</strong> Less than 1 hour</li>
+                    <li><strong>High:</strong> 1-24 hours (less than 1 day)</li>
+                    <li><strong>Medium:</strong> 1-7 days</li>
+                    <li><strong>Low:</strong> More than 7 days</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="faq-section">
+        <h3>Setting Up Incident Tracking</h3>
+        <div class="faq-answer">
+            <p><strong>CFR and MTTR require incident tracking configuration.</strong></p>
+            <p>To enable these metrics:</p>
+            <ol>
+                <li>Create a Jira filter for production incidents using JQL like:
+                    <code style="display: block; margin: 10px 0; padding: 10px; background: var(--bg-tertiary);">
+                        project IN (YOUR_PROJECTS)<br>
+                        AND (issuetype = Incident OR priority IN (Blocker, Critical, High))<br>
+                        AND labels IN (production, p1, sev1)<br>
+                        AND (created >= -90d OR resolved >= -90d)
+                    </code>
+                </li>
+                <li>Add the filter ID to your team configuration in <code>config/config.yaml</code>:
+                    <code style="display: block; margin: 10px 0; padding: 10px; background: var(--bg-tertiary);">
+                        jira:<br>
+                        &nbsp;&nbsp;filters:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;incidents: 12345  # Your filter ID
+                    </code>
+                </li>
+                <li>Re-run data collection: <code>python collect_data.py</code></li>
+            </ol>
+            <p>See <strong>README.md</strong> for detailed setup instructions and JQL examples.</p>
+        </div>
+    </div>
+
+    <div class="faq-section">
+        <h3>Overall DORA Performance Level</h3>
+        <div class="faq-answer">
+            Your team's overall DORA level is determined by the <strong>lowest-performing metric</strong> among the four. For example, if you have Elite deployment frequency but Low lead time, your overall level is Low. This encourages balanced improvement across all dimensions of software delivery performance.
+        </div>
+    </div>
+</div>
+
 <!-- Time Windows -->
 <div class="card">
     <h2>⏰ Time Windows</h2>
