@@ -876,6 +876,10 @@ class JiraCollector:
 
             issues = self.jira.search_issues(jql, maxResults=1000, fields='key')
 
+            # Handle None response from Jira API
+            if issues is None:
+                return []
+
             return [issue.key for issue in issues]
 
         except Exception as e:
