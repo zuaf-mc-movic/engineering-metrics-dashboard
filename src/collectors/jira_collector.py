@@ -857,6 +857,7 @@ class JiraCollector:
         Returns:
             List of issue keys (e.g., ['PROJ-123', 'PROJ-124'])
         """
+        import traceback
         try:
             # JQL: Find all issues with this fixVersion
             jql = f'project = {project_key} AND fixVersion = "{version_name}"'
@@ -887,7 +888,9 @@ class JiraCollector:
                 # If team_members processing fails, skip filtering
                 pass
 
-            issues = self.jira.search_issues(jql, maxResults=1000, fields='key')
+            # Note: We only need issue keys, but specifying fields='key' can cause
+            # the Jira library to hit malformed data. Using default fields works around this.
+            issues = self.jira.search_issues(jql, maxResults=1000)
 
             # Handle None response from Jira API
             if issues is None:
@@ -897,6 +900,10 @@ class JiraCollector:
 
         except Exception as e:
             print(f"  Warning: Could not fetch issues for version '{version_name}': {e}")
+            print(f"  Debug: Exception type: {type(e).__name__}")
+            print(f"  Debug: team_members = {team_members}")
+            print(f"  Debug: Stack trace:")
+            traceback.print_exc()
             return []
 
     def get_dataframes(self):
