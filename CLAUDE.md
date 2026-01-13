@@ -427,6 +427,28 @@ const CHART_COLORS = {
 - Only captures actual work: new issues, resolved issues, and active WIP (not closed items with label updates)
 - See `src/collectors/jira_collector.py:60` (project query) and `:195` (person query)
 
+**Known Jira Library Limitations:**
+
+*Issue Fetching Bug (Fixed in Code):*
+The Jira Python library (v3.x) has a bug when using `fields='key'` parameter in `search_issues()`. When iterating over Fix Version data, the library encounters malformed issue data and throws:
+```
+TypeError: argument of type 'NoneType' is not iterable
+  at jira/client.py:3686 in search_issues
+  if k in iss.raw.get("fields", {}):
+```
+
+*Workaround (Already Implemented):*
+In `src/collectors/jira_collector.py`, the `_get_issues_for_version()` method omits the `fields` parameter:
+
+```python
+# Fetch all fields instead of just 'key' to avoid library bug
+issues = self.jira.search_issues(jql, maxResults=1000)
+```
+
+*Trade-off:* Fetches ~10-15 fields per issue instead of 1, slightly increasing API response size. However, this ensures stability and prevents collection failures.
+
+*Commit:* 6451da5 (Jan 13, 2026)
+
 ### DORA Metrics: How Releases Are Counted
 
 **Release Source**: Uses Jira Fix Versions instead of GitHub Releases for deployment tracking.

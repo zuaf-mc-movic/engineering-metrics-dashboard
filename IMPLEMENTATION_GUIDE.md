@@ -124,6 +124,9 @@ The system supports flexible date ranges through a comprehensive architecture:
    - Person queries filter by activity: `(created >= -Nd OR resolved >= -Nd OR (statusCategory != Done AND updated >= -Nd))`
    - Prevents noise from bulk administrative updates on closed issues
 
+   **Jira Library Limitation:**
+   The `_get_issues_for_version()` method uses default fields instead of `fields='key'` to work around a bug in the Jira Python library. While this fetches more data than strictly necessary, it prevents collection failures when the library encounters malformed issue data. See [Jira Fix Version Troubleshooting](docs/JIRA_FIX_VERSION_TROUBLESHOOTING.md#issue-8-internal-library-error-when-fetching-version-issues) for details.
+
 **Cache File Naming Convention:**
 - `metrics_cache_30d.pkl` - 30-day data
 - `metrics_cache_90d.pkl` - 90-day data (default)

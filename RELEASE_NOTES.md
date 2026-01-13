@@ -4,6 +4,16 @@
 
 Major cleanup and documentation release preparing the Team Metrics Dashboard for production use.
 
+## Recent Bug Fixes (Jan 13, 2026)
+
+### Fix Jira Library Bug - Issue Mapping Failures (Commit: 6451da5)
+- **Issue:** Jira Python library bug caused `TypeError: argument of type 'NoneType' is not iterable` when fetching issues for Fix Versions
+- **Impact:** All releases showed 0 team issues, breaking Jira-based lead time calculation
+- **Root Cause:** Library bug in `jira/client.py:3686` when using `fields='key'` parameter with malformed issue data
+- **Resolution:** Removed `fields='key'` parameter from `search_issues()` call, using default fields instead
+- **Result:** Clean collection with proper issue mapping, Jira-based lead time now works correctly
+- **Trade-off:** Slightly larger API responses, but ensures stability and accurate metrics
+
 ## Key Improvements
 
 ### ✅ Test Coverage Enhancements

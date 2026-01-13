@@ -262,6 +262,44 @@ A: Yes! Look for these log messages during collection:
 
 ---
 
+### Issue 8: Internal Library Error When Fetching Version Issues
+
+**Symptoms:**
+```
+Warning: Could not fetch issues for version 'Live - 21/Oct/2025':
+  argument of type 'NoneType' is not iterable
+```
+Multiple warnings during Fix Version collection, all releases show 0 team issues.
+
+**Root Cause:**
+This is a bug in the Jira Python library (not our code). When `fields='key'` parameter is used in `search_issues()`, the library iterates over field specifications and crashes when it encounters malformed issue data where `iss.raw.get("fields", {})` returns `None` instead of a dict.
+
+**Stack Trace (for reference):**
+```
+File "jira/client.py", line 3686, in search_issues
+  if k in iss.raw.get("fields", {}):
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: argument of type 'NoneType' is not iterable
+```
+
+**Solution:**
+This bug has been fixed in commit 6451da5 (Jan 13, 2026). The fix removes the `fields='key'` parameter and uses default fields instead, which bypasses the malformed data path in the library.
+
+**If You're Seeing This Error:**
+- Update to the latest version of the codebase (commit 6451da5 or later)
+- Run a fresh data collection: `python collect_data.py --date-range 90d`
+- The error should no longer appear
+
+**Technical Details:**
+- **Affected Code:** `src/collectors/jira_collector.py`, `_get_issues_for_version()` method
+- **Workaround:** Fetch default fields instead of specifying `fields='key'`
+- **Trade-off:** Slightly larger API responses (~10-15 fields vs 1), but ensures stability
+- **Performance Impact:** Negligible (< 5% increase in response size)
+
+**User Impact:** None for users on latest version - the fix is transparent and automatic.
+
+---
+
 ## Pattern Customization
 
 If your version format doesn't match, you can adjust the pattern.

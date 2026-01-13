@@ -51,6 +51,11 @@ A Python-based metrics collection and visualization tool for tracking team perfo
   - Offline collection with caching (`collect_data.py`)
   - Dashboard refresh button using GraphQL
 
+## Known Limitations
+
+**Jira API Integration:**
+- The Jira Python library has a known bug when fetching specific fields from Fix Versions. We use a workaround (fetching default fields) that slightly increases API response sizes but ensures reliability. This is transparent to users and requires no configuration. See [Troubleshooting Guide](docs/JIRA_FIX_VERSION_TROUBLESHOOTING.md#issue-8-internal-library-error-when-fetching-version-issues) for technical details.
+
 ## Project Structure
 
 ```
