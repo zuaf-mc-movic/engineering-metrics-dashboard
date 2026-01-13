@@ -287,17 +287,6 @@ class JiraCollector:
             # Execute the filter's JQL
             jira_issues = self.jira.search_issues(jql, maxResults=1000, expand='changelog')
 
-            # DEBUG: Log raw count
-            print(f"  DEBUG: Retrieved {len(jira_issues)} issues from Jira")
-
-            # DEBUG: Check for duplicates
-            issue_keys = [issue.key for issue in jira_issues]
-            unique_keys = set(issue_keys)
-            if len(issue_keys) != len(unique_keys):
-                duplicates = [k for k in issue_keys if issue_keys.count(k) > 1]
-                print(f"  WARNING: Found {len(issue_keys) - len(unique_keys)} duplicate issues!")
-                print(f"  Duplicate keys: {set(duplicates)}")
-
             for issue in jira_issues:
                 issue_data = {
                     'key': issue.key,
@@ -857,7 +846,6 @@ class JiraCollector:
         Returns:
             List of issue keys (e.g., ['PROJ-123', 'PROJ-124'])
         """
-        import traceback
         try:
             # JQL: Find all issues with this fixVersion
             jql = f'project = {project_key} AND fixVersion = "{version_name}"'
@@ -900,10 +888,6 @@ class JiraCollector:
 
         except Exception as e:
             print(f"  Warning: Could not fetch issues for version '{version_name}': {e}")
-            print(f"  Debug: Exception type: {type(e).__name__}")
-            print(f"  Debug: team_members = {team_members}")
-            print(f"  Debug: Stack trace:")
-            traceback.print_exc()
             return []
 
     def get_dataframes(self):
