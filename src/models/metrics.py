@@ -262,7 +262,11 @@ class MetricsCalculator(DORAMetrics, JiraMetrics):
         return member_trends
 
     def calculate_team_metrics(
-        self, team_name: str, team_config: Dict, jira_filter_results: Dict = None, issue_to_version_map: Dict = None
+        self,
+        team_name: str,
+        team_config: Dict,
+        jira_filter_results: Optional[Dict] = None,
+        issue_to_version_map: Optional[Dict] = None,
     ) -> Dict:
         """Calculate team-level metrics
 
@@ -333,9 +337,9 @@ class MetricsCalculator(DORAMetrics, JiraMetrics):
         self,
         username: str,
         github_data: Dict,
-        jira_data: List = None,
-        start_date: datetime = None,
-        end_date: datetime = None,
+        jira_data: Optional[List] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
     ) -> Dict:
         """Calculate person-level metrics
 

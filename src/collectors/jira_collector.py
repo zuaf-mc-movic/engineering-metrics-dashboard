@@ -19,7 +19,7 @@ class JiraCollector:
         username: str,
         api_token: str,
         project_keys: List[str],
-        team_members: List[str] = None,
+        team_members: Optional[List[str]] = None,
         days_back: int = 90,
         verify_ssl: bool = True,
         timeout: int = 120,
@@ -569,7 +569,10 @@ class JiraCollector:
         return flagged
 
     def collect_incidents(
-        self, filter_id: int = None, project_keys: List[str] = None, correlation_window_hours: int = 24
+        self,
+        filter_id: Optional[int] = None,
+        project_keys: Optional[List[str]] = None,
+        correlation_window_hours: int = 24,
     ) -> List[Dict]:
         """Collect production incidents from Jira
 
@@ -757,7 +760,7 @@ class JiraCollector:
 
         return False
 
-    def collect_releases_from_fix_versions(self, project_keys: List[str] = None) -> List[Dict]:
+    def collect_releases_from_fix_versions(self, project_keys: Optional[List[str]] = None) -> List[Dict]:
         """Collect releases from Jira Fix Versions instead of GitHub Releases
 
         Parses Fix Version names in format:
@@ -958,7 +961,9 @@ class JiraCollector:
             "is_prerelease": is_prerelease,
         }
 
-    def _get_issues_for_version(self, project_key: str, version_name: str, team_members: List[str] = None) -> List[str]:
+    def _get_issues_for_version(
+        self, project_key: str, version_name: str, team_members: Optional[List[str]] = None
+    ) -> List[str]:
         """Get list of issue keys associated with this Fix Version
 
         Args:

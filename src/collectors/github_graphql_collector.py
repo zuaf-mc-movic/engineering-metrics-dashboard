@@ -21,9 +21,9 @@ class GitHubGraphQLCollector:
     def __init__(
         self,
         token: str,
-        organization: str = None,
-        teams: List[str] = None,
-        team_members: List[str] = None,
+        organization: Optional[str] = None,
+        teams: Optional[List[str]] = None,
+        team_members: Optional[List[str]] = None,
         days_back: int = 90,
         max_pages_per_repo: int = 10,
         repo_workers: int = 5,
@@ -77,7 +77,7 @@ class GitHubGraphQLCollector:
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
 
-    def _execute_query(self, query: str, variables: Dict = None, max_retries: int = 3) -> Dict:
+    def _execute_query(self, query: str, variables: Optional[Dict] = None, max_retries: int = 3) -> Dict:
         """Execute a GraphQL query with retry logic for transient errors"""
         payload = {"query": query}
         if variables:
@@ -1099,7 +1099,11 @@ class GitHubGraphQLCollector:
         return {"pull_requests": pull_requests, "reviews": reviews, "commits": unique_commits, "releases": releases}
 
     def collect_team_metrics(
-        self, team_name: str, team_members: List[str], start_date: datetime = None, end_date: datetime = None
+        self,
+        team_name: str,
+        team_members: List[str],
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
     ):
         """Collect metrics for a specific team"""
         original_members = self.team_members

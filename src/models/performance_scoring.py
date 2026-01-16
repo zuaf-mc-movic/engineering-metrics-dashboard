@@ -27,7 +27,7 @@ class PerformanceScorer:
         return ((value - min_val) / (max_val - min_val)) * 100
 
     @staticmethod
-    def load_performance_weights(weights: Dict = None) -> Dict[str, float]:
+    def load_performance_weights(weights: Optional[Dict] = None) -> Dict[str, float]:
         """Load performance weights from config or use defaults.
 
         Args:
@@ -238,7 +238,7 @@ class PerformanceScorer:
 
     @staticmethod
     def calculate_performance_score(
-        metrics: Dict, all_metrics_list: List[Dict], team_size: int = None, weights: Dict = None
+        metrics: Dict, all_metrics_list: List[Dict], team_size: Optional[int] = None, weights: Optional[Dict] = None
     ) -> float:
         """Calculate overall performance score (0-100) for a team or person.
 

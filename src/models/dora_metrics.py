@@ -25,10 +25,10 @@ class DORAMetrics:
 
     def calculate_dora_metrics(
         self,
-        start_date: datetime = None,
-        end_date: datetime = None,
-        incidents_df: pd.DataFrame = None,
-        issue_to_version_map: Dict = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        incidents_df: Optional[pd.DataFrame] = None,
+        issue_to_version_map: Optional[Dict] = None,
     ) -> Dict[str, Any]:
         """Calculate DORA (DevOps Research and Assessment) four key metrics.
 
@@ -173,7 +173,7 @@ class DORAMetrics:
         prs_df: pd.DataFrame,
         start_date: datetime,
         end_date: datetime,
-        issue_to_version_map: Dict = None,
+        issue_to_version_map: Optional[Dict] = None,
     ) -> Dict[str, Any]:
         """Calculate lead time for changes (PR merge to deployment).
 
