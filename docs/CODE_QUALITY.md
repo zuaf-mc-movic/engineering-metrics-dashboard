@@ -85,12 +85,13 @@ See `.pre-commit-config.yaml` for hook configuration. By default:
 
 ### Mypy Type Checking
 
-**Status: ✅ 100% Type Safe - 0 errors across 22 source files**
+**Status: ✅ 100% Type Safe - 0 errors across 22 source files on ALL Python versions (3.9-3.12)**
 
 **Achievement Timeline:**
 - **Initial State** (Jan 2026): 78 type errors across 9 files
 - **First Pass** (Jan 14, 2026): Reduced to 8 errors (90% reduction) - [Commit 2f03a3d](../../commit/2f03a3d)
-- **Final Fix** (Jan 16, 2026): **0 errors (100% reduction)** - [Commit f012235](../../commit/f012235)
+- **Second Pass** (Jan 16, 2026): **0 errors on Python 3.10-3.12** - [Commit f012235](../../commit/f012235)
+- **Final Fix** (Jan 16, 2026): **0 errors on Python 3.9** (100% reduction) - [Commits f36e01a, bdb7385](../../commit/bdb7385)
 
 **Key Improvements Made:**
 
@@ -107,8 +108,22 @@ See `.pre-commit-config.yaml` for hook configuration. By default:
 3. **✅ Fixed nested function return types** (1 fix)
    - `app.py`: Changed `datetime_handler` to raise `TypeError` for non-datetime objects (matches standard JSON serializer)
 
-4. **✅ Added proper type imports**
-   - Added `cast` from typing to 5 critical files for runtime type assertions
+4. **✅ Fixed Python 3.9 compatibility** (6 type assertions - Jan 16, 2026)
+   - **Root Cause**: Python 3.9's type narrowing cannot resolve `jira` library's union return types
+   - **Solution**: Added explicit `cast(List[Issue], ...)` assertions at all `search_issues()` call sites
+   - **Locations Fixed**:
+     - `jira_collector.py:79` - `collect_issue_metrics()`
+     - `jira_collector.py:171` - `collect_worklog_metrics()`
+     - `jira_collector.py:220` - `collect_person_issues()`
+     - `jira_collector.py:306` - `collect_filter_issues()`
+     - `jira_collector.py:621` - `collect_incidents()`
+     - `jira_collector.py:1009` - `_get_issues_for_version()`
+   - **Result**: Type assertions make our understanding of jira API types explicit
+   - **CI**: Removed `continue-on-error` flag to enable strict type checking
+
+5. **✅ Added proper type imports**
+   - Added `cast` from typing to 6 critical files for runtime type assertions
+   - Imported `Issue` type from jira library for explicit type annotations
 
 **Type Hint Coverage by Module:**
 
@@ -127,6 +142,8 @@ See `.pre-commit-config.yaml` for hook configuration. By default:
 **CI/CD Integration:**
 - GitHub Actions workflow validates type safety across Python 3.9, 3.10, 3.11, and 3.12
 - All quality gates passing on every commit to `main` branch
+- Strict type checking enabled (`continue-on-error: false`) - any type error fails the build
+- Python 3.9 compatibility confirmed: 0 errors (previously had 74 errors before fix)
 
 ### Black Formatting
 
