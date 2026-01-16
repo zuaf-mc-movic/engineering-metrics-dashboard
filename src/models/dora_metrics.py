@@ -11,7 +11,7 @@ These metrics are used to measure DevOps performance and maturity.
 
 import re
 from datetime import datetime, timedelta
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pandas as pd
 

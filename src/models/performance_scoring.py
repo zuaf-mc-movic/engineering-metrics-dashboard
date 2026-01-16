@@ -4,7 +4,7 @@ This module provides utilities for calculating composite performance scores
 based on multiple metrics including GitHub activity, Jira throughput, and DORA metrics.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class PerformanceScorer:
