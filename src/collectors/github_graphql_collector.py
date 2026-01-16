@@ -8,7 +8,7 @@ GraphQL has a separate rate limit (5000 points/hour) from REST API.
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import requests
