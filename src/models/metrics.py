@@ -575,7 +575,7 @@ class MetricsCalculator(DORAMetrics, JiraMetrics):
         return PerformanceScorer.normalize_team_size(metrics, all_metrics_list, team_size)
 
     @staticmethod
-    def _extract_normalization_values(all_metrics_list: List[Dict]) -> Dict[str, tuple]:
+    def _extract_normalization_values(all_metrics_list: List[Dict]) -> Dict[str, List]:
         """Extract min/max values for normalization.
 
         Delegates to PerformanceScorer.extract_normalization_values()

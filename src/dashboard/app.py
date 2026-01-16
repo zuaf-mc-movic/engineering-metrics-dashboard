@@ -513,7 +513,7 @@ def api_reload_cache() -> Union[Response, Tuple[Response, int]]:
 
 
 @app.route("/collect")
-def collect() -> Union[str, Response]:
+def collect() -> Any:
     """Trigger collection and redirect to dashboard"""
     try:
         refresh_metrics()

@@ -339,7 +339,7 @@ class DORAMetrics:
             "trend": trend,
         }
 
-    def _extract_issue_key_from_pr(self, pr: pd.Series) -> str:
+    def _extract_issue_key_from_pr(self, pr: pd.Series) -> Optional[str]:
         """Extract Jira issue key from PR title or branch.
 
         Looks for patterns like:

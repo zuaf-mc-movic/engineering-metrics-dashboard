@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from jira import JIRA
 
@@ -53,7 +53,7 @@ def search_filters_by_name(jira_client: JIRA, search_term: str) -> List[Dict]:
     return matching_filters
 
 
-def get_filter_jql(jira_client: JIRA, filter_id: str) -> str:
+def get_filter_jql(jira_client: JIRA, filter_id: str) -> Optional[str]:
     """Get the JQL query for a specific filter
 
     Args:
@@ -61,7 +61,7 @@ def get_filter_jql(jira_client: JIRA, filter_id: str) -> str:
         filter_id: Filter ID
 
     Returns:
-        JQL query string
+        JQL query string or None if not found
     """
     try:
         jira_filter = jira_client.filter(filter_id)
