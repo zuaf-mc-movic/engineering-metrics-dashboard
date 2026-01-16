@@ -4,7 +4,7 @@ import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 from flask import Flask, Response, jsonify, make_response, redirect, render_template, request
 
@@ -276,7 +276,7 @@ def filter_jira_data_by_date(issues: List, start_date: datetime, end_date: datet
         updated_mask = (issues_df["updated"] >= start_date) & (issues_df["updated"] <= end_date)
         mask |= updated_mask
 
-    return issues_df[mask].to_dict("records")
+    return cast(List[Any], issues_df[mask].to_dict("records"))
 
 
 def should_refresh_cache(cache_duration_minutes: int = 60) -> bool:
@@ -285,7 +285,7 @@ def should_refresh_cache(cache_duration_minutes: int = 60) -> bool:
         return True
 
     elapsed = (datetime.now() - metrics_cache["timestamp"]).total_seconds() / 60
-    return elapsed > cache_duration_minutes
+    return bool(elapsed > cache_duration_minutes)
 
 
 def refresh_metrics() -> Optional[Dict]:
@@ -1105,7 +1105,7 @@ def create_json_response(data: Any, filename: str) -> Response:
     def datetime_handler(obj: Any) -> str:
         if isinstance(obj, datetime):
             return obj.isoformat()
-        return obj
+        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
     # Pretty-print JSON
     json_str = json.dumps(data, indent=2, default=datetime_handler)

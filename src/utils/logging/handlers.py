@@ -56,7 +56,7 @@ class CompressingRotatingFileHandler(RotatingFileHandler):
         # Close the current file
         if self.stream:
             self.stream.close()
-            self.stream = None
+            self.stream = None  # type: ignore[assignment]
 
         # Rotate existing backup files
         # e.g., log.2.gz -> log.3.gz, log.1.gz -> log.2.gz

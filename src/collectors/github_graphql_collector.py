@@ -8,7 +8,7 @@ GraphQL has a separate rate limit (5000 points/hour) from REST API.
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
 import requests
@@ -79,7 +79,7 @@ class GitHubGraphQLCollector:
 
     def _execute_query(self, query: str, variables: Optional[Dict] = None, max_retries: int = 3) -> Dict:
         """Execute a GraphQL query with retry logic for transient errors"""
-        payload = {"query": query}
+        payload: Dict[str, Any] = {"query": query}
         if variables:
             payload["variables"] = variables
 
@@ -118,7 +118,7 @@ class GitHubGraphQLCollector:
                     if "errors" in result:
                         raise Exception(f"GraphQL errors: {result['errors']}")
 
-                    return result["data"]
+                    return cast(Dict[Any, Any], result["data"])
 
             except requests.exceptions.Timeout:
                 if attempt < max_retries - 1:

@@ -9,7 +9,7 @@ import hashlib
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, cast
 
 CACHE_DIR = Path("data/repo_cache")
 CACHE_EXPIRATION_HOURS = 24
@@ -74,7 +74,7 @@ def get_cached_repositories(organization: str, teams: List[str]) -> Optional[Lis
             return None
 
         print(f"  ✅ Using cached repositories (age: {age.total_seconds()/3600:.1f}h)")
-        return cache_data["repositories"]
+        return cast(List[str], cache_data["repositories"])
 
     except Exception as e:
         print(f"  ⚠️  Cache read error: {e}")

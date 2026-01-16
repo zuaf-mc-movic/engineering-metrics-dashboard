@@ -7,7 +7,7 @@ and setting up the logging system.
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import yaml
 
@@ -43,7 +43,7 @@ def load_config(config_file: Optional[str] = None) -> Dict:
         raise FileNotFoundError(f"Logging config file not found: {config_file}")
 
     with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+        config = cast(Dict[Any, Any], yaml.safe_load(f))
 
     return config
 
