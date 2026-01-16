@@ -23,6 +23,9 @@ class DORAMetrics:
     - self.dfs: Dict of DataFrames (pull_requests, releases, etc.)
     """
 
+    # Attributes provided by parent class (MetricsCalculator)
+    dfs: Dict[str, pd.DataFrame]
+
     def calculate_dora_metrics(
         self,
         start_date: Optional[datetime] = None,

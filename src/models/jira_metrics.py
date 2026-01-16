@@ -18,6 +18,10 @@ class JiraMetrics:
     - self.out: Logger instance
     """
 
+    # Attributes provided by parent class (MetricsCalculator)
+    dfs: Dict[str, pd.DataFrame]
+    out: Any  # Logger instance
+
     def calculate_jira_metrics(self) -> Dict:
         """Calculate Jira-related metrics from jira_issues DataFrame."""
         if "jira_issues" not in self.dfs or self.dfs["jira_issues"].empty:
