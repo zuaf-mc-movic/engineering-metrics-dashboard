@@ -119,9 +119,9 @@ class JiraCollector:
     def _calculate_status_times(self, issue):
         """Calculate time spent in each status"""
         status_times = {
-            "time_in_todo_hours": 0,
-            "time_in_progress_hours": 0,
-            "time_in_review_hours": 0,
+            "time_in_todo_hours": 0.0,
+            "time_in_progress_hours": 0.0,
+            "time_in_review_hours": 0.0,
         }
 
         if not hasattr(issue, "changelog"):
@@ -668,7 +668,7 @@ class JiraCollector:
 
         return production_incidents
 
-    def _extract_deployment_tag(self, incident: Dict) -> str:
+    def _extract_deployment_tag(self, incident: Dict) -> Optional[str]:
         """Extract deployment/release tag from incident
 
         Looks for version patterns like v1.2.3, release-123, etc. in:
@@ -872,7 +872,7 @@ class JiraCollector:
 
         return releases
 
-    def _parse_fix_version_name(self, version_name: str) -> Dict:
+    def _parse_fix_version_name(self, version_name: str) -> Optional[Dict]:
         """Parse Jira Fix Version name into release structure
 
         Supported formats:
