@@ -54,7 +54,7 @@ class GitHubGraphQLCollector:
         self.out = get_logger("team_metrics.collectors.github")
 
         # Track collection status
-        self.collection_status = {
+        self.collection_status: Dict[str, Any] = {
             "successful_repos": [],
             "failed_repos": [],
             "partial_repos": [],
@@ -251,7 +251,13 @@ class GitHubGraphQLCollector:
 
     def collect_all_metrics(self):
         """Collect all metrics using GraphQL"""
-        all_data = {"pull_requests": [], "reviews": [], "commits": [], "deployments": [], "releases": []}
+        all_data: Dict[str, List[Any]] = {
+            "pull_requests": [],
+            "reviews": [],
+            "commits": [],
+            "deployments": [],
+            "releases": [],
+        }
 
         # Get repositories
         if self.teams and self.organization:
