@@ -168,7 +168,7 @@ class JiraCollector:
         jql = f"project = {project_key} AND worklogDate >= -{self.days_back}d"
 
         try:
-            issues = self.jira.search_issues(jql, maxResults=1000)
+            issues = cast(List[Issue], self.jira.search_issues(jql, maxResults=1000))
 
             for issue in issues:
                 issue_worklogs = self.jira.worklogs(issue.key)
