@@ -53,7 +53,6 @@ jobs:
     - name: Type check with Mypy
       run: |
         mypy src/ --ignore-missing-imports
-      continue-on-error: true  # Python 3.9 has jira library type stub issues
 
     - name: Run tests with pytest
       run: |

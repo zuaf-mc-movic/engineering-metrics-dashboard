@@ -1,10 +1,10 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
 import urllib3
-from jira import JIRA
+from jira import JIRA, Issue
 
 from src.utils.logging import get_logger
 
@@ -76,7 +76,7 @@ class JiraCollector:
         jql += " ORDER BY updated DESC"
 
         try:
-            jira_issues = self.jira.search_issues(jql, maxResults=1000, expand="changelog")
+            jira_issues = cast(List[Issue], self.jira.search_issues(jql, maxResults=1000, expand="changelog"))
 
             for issue in jira_issues:
                 issue_data = {
@@ -217,7 +217,7 @@ class JiraCollector:
 
             # Execute query with optional changelog for status transitions
             expand = "changelog" if expand_changelog else None
-            jira_issues = self.jira.search_issues(jql, maxResults=1000, expand=expand)
+            jira_issues = cast(List[Issue], self.jira.search_issues(jql, maxResults=1000, expand=expand))
 
             for issue in jira_issues:
                 issue_data = {
@@ -303,7 +303,7 @@ class JiraCollector:
                 self.out.info(f"Added time constraint: {time_clause}", indent=1)
 
             # Execute the filter's JQL
-            jira_issues = self.jira.search_issues(jql, maxResults=1000, expand="changelog")
+            jira_issues = cast(List[Issue], self.jira.search_issues(jql, maxResults=1000, expand="changelog"))
 
             for issue in jira_issues:
                 issue_data = {
@@ -618,7 +618,7 @@ class JiraCollector:
             self.out.info(f"Collecting incidents with JQL: {jql[:150]}...")
 
             try:
-                jira_issues = self.jira.search_issues(jql, maxResults=500, expand="changelog")
+                jira_issues = cast(List[Issue], self.jira.search_issues(jql, maxResults=500, expand="changelog"))
                 self.out.info(f"Found {len(jira_issues)} potential incidents", indent=1)
 
                 for issue in jira_issues:
@@ -1006,7 +1006,7 @@ class JiraCollector:
 
             # Note: We only need issue keys, but specifying fields='key' can cause
             # the Jira library to hit malformed data. Using default fields works around this.
-            issues = self.jira.search_issues(jql, maxResults=1000)
+            issues = cast(List[Issue], self.jira.search_issues(jql, maxResults=1000))
 
             # Handle None response from Jira API
             if issues is None:
