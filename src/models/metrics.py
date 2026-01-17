@@ -318,6 +318,12 @@ class MetricsCalculator(DORAMetrics, JiraMetrics):
             incidents_df=incidents_df,  # Pass incidents for CFR & MTTR
         )
 
+        # Convert releases DataFrame to list of dicts for caching
+        raw_releases = []
+        releases_df = self.dfs.get("releases", pd.DataFrame())
+        if not releases_df.empty:
+            raw_releases = releases_df.to_dict("records")
+
         return {
             "team_name": team_name,
             "github": {
@@ -331,6 +337,7 @@ class MetricsCalculator(DORAMetrics, JiraMetrics):
             },
             "jira": jira_metrics,
             "dora": dora_metrics,
+            "raw_releases": raw_releases,  # Add releases to cache
         }
 
     def calculate_person_metrics(

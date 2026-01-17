@@ -778,6 +778,8 @@ class JiraCollector:
         projects = project_keys or self.project_keys
         releases = []
 
+        self.out.info(f"🚀 Collecting releases from Jira Fix Versions (projects: {projects})...", indent=0)
+
         for project_key in projects:
             try:
                 # Query all versions for this project
@@ -821,9 +823,16 @@ class JiraCollector:
                             pass  # If date parsing fails, just use released flag
 
                     # Filter by date range
-                    if release_data["published_at"] < self.since_date:
-                        skipped_date += 1
-                        continue
+                    try:
+                        if release_data["published_at"] < self.since_date:
+                            skipped_date += 1
+                            continue
+                    except TypeError as e:
+                        self.out.warning(
+                            f"Date comparison error for {version.name}: published_at={release_data['published_at']} (type: {type(release_data['published_at'])}), since_date={self.since_date} (type: {type(self.since_date)})",
+                            indent=2,
+                        )
+                        raise
 
                     # Add project context
                     release_data["project"] = project_key
