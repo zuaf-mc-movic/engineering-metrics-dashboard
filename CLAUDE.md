@@ -458,7 +458,7 @@ issues = self.jira.search_issues(jql, maxResults=1000)
 **Three-Tier Filtering** (`jira_collector.py:649-758`):
 1. **Status Check**: Only released versions (not planned/future), releaseDate in past
 2. **Pattern Matching**: Supports `"Live - 6/Oct/2025"`, `"Beta - 15/Jan/2026"`, `"RA_Web_2025_11_25"` formats (see `_parse_fix_version_name()` lines 760-846)
-3. **Team Member Filtering**: Only issues assigned to/reported by team members
+3. **Team Member Filtering**: Only issues assigned to team members (assignee field only)
 
 **Why Filtering Matters**: Without filtering, metrics inflated 2-3x. Typical realistic values: 0.5-2.0 deployments/week per team.
 

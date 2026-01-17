@@ -335,7 +335,7 @@ Only accepted formats counted. Prevents:
 - Non-release fix versions (e.g., "Backlog", "Future")
 
 #### Team Member Validation
-Jira usernames configured per team. Only issues with team members as assignee/reporter counted in releases.
+Jira usernames configured per team. Only issues with team members as assignee counted in releases.
 
 **Prevents**: Organization-wide releases inflating team's deployment frequency
 

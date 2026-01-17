@@ -72,7 +72,7 @@ class JiraCollector:
         jql = f"project = {project_key} AND (created >= -{self.days_back}d OR resolved >= -{self.days_back}d OR (statusCategory != Done AND updated >= -{self.days_back}d))"
         if self.team_members:
             members_str = ", ".join(self.team_members)
-            jql += f" AND (assignee in ({members_str}) OR reporter in ({members_str}))"
+            jql += f" AND assignee in ({members_str})"
         jql += " ORDER BY updated DESC"
 
         try:
@@ -978,7 +978,7 @@ class JiraCollector:
             # JQL: Find all issues with this fixVersion
             jql = f'project = {project_key} AND fixVersion = "{version_name}"'
 
-            # Filter by team membership (assignee or reporter)
+            # Filter by team membership (assignee only)
             try:
                 if team_members and len(team_members) > 0:
                     # Escape usernames for JQL (wrap in quotes if they contain spaces)
@@ -999,7 +999,7 @@ class JiraCollector:
 
                         if quoted_members:
                             members_str = ", ".join(quoted_members)
-                            jql += f" AND (assignee in ({members_str}) OR reporter in ({members_str}))"
+                            jql += f" AND assignee in ({members_str})"
             except Exception as e:
                 # If team_members processing fails, skip filtering
                 pass

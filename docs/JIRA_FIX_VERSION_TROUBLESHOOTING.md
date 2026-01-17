@@ -220,9 +220,9 @@ Previously counted ALL issues in a version, even if other teams did the work.
 
 Now filters by team membership:
 ```python
-# Only count issues assigned to or reported by team members
+# Only count issues assigned to team members
 jql = f'fixVersion = "{version}" AND '
-jql += f'(assignee in ({team}) OR reporter in ({team}))'
+jql += f'assignee in ({team})'
 ```
 
 **Impact Example:**
