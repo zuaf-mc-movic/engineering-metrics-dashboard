@@ -464,6 +464,47 @@ issues = self.jira.search_issues(jql, maxResults=1000)
 
 **See Also**: `docs/JIRA_FIX_VERSION_TROUBLESHOOTING.md`
 
+### Lead Time for Changes: How It's Calculated
+
+**Measures**: Time from code commit (PR merge) to production deployment.
+
+**Two-Method Approach** (Jira-based preferred, time-based fallback):
+
+#### Method 1: Jira-Based Mapping (Preferred - Most Accurate)
+Flow: PR → Jira Issue → Fix Version → Deployment
+
+1. **Extract Issue Key from PR**:
+   - Searches PR title: `"[RSC-123] Add feature"` → `RSC-123`
+   - Searches branch name: `feature/RSC-123-add-feature` → `RSC-123`
+   - Pattern: `([A-Z]+-\d+)`
+
+2. **Map to Fix Version**:
+   - Uses `issue_to_version_map` built during collection
+   - Example: `RSC-123` → `"Live - 21/Oct/2025"`
+
+3. **Calculate Lead Time**:
+   ```
+   Lead Time = Fix Version Date - PR Merged Date
+   ```
+
+#### Method 2: Time-Based Fallback
+When Jira mapping unavailable:
+- Finds next production deployment after PR merge
+- Lead Time = Next Deployment - PR Merge
+
+**Release Workflow Support**:
+Works with cherry-pick workflows:
+- Feature branches merge to `master`: `feature/RSC-456-*` → `master`
+- Release branches created later: `release/Rescue-7.55-AI`
+- Commits cherry-picked: `master` → `release/Rescue-7.55-AI`
+- Connection tracked through Jira Fix Versions (not git history)
+
+**Performance Levels** (DORA standard):
+- **Elite**: < 24 hours (< 1 day)
+- **High**: < 168 hours (< 1 week)
+- **Medium**: < 720 hours (< 1 month)
+- **Low**: ≥ 720 hours (≥ 1 month)
+
 ### Cache Management
 - Pickle format: `{'teams': {...}, 'persons': {...}, 'comparison': {...}, 'timestamp': datetime}`
 - Dashboard checks cache age (default: 60 min) before auto-refresh

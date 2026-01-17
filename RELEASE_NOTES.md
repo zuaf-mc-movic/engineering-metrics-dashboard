@@ -4,6 +4,41 @@
 
 ## [Unreleased] - 2026-01-17
 
+### Critical Bug Fixes & Feature Improvements
+
+#### Fixed
+- **🐛 Critical: Releases not saved to cache** - Fixed bug where Jira Fix Version releases were collected and used for DORA calculations but not saved to cache, resulting in 0 releases displayed
+  - Root cause: `MetricsCalculator.calculate_team_metrics()` wasn't returning `raw_releases` in metrics dictionary
+  - Impact: Native Team now shows 35 releases, WebTC Team shows 4 releases
+  - Deployment frequency and DORA metrics now calculate correctly
+
+- **Assignee-only filtering for team metrics** - Changed from "assignee OR reporter" to "assignee only" for more accurate team attribution
+  - Prevents inflation from issues reported by team but assigned to others
+  - Critical for shared releases across multiple teams
+  - Example: Native Team releases show 77% with 0 issues (correct - only counting team-assigned work)
+
+- **CI workflow paths** - Updated GitHub Actions to check `tools/` directory after project restructuring
+
+#### Added
+- **Branch name collection for Lead Time tracking** - Added `headRefName` to PR data collection
+  - Enables issue key extraction from branch names (e.g., `feature/RSC-123-add-feature`)
+  - Primary: Checks PR title for issue key
+  - Fallback: Checks branch name for issue key ← **NEW**
+  - Supports cherry-pick workflows: feature branches → master → release branches
+  - Significantly improves lead time accuracy for release/* workflows
+
+- **Enhanced datetime error handling** - Added try/except around date comparisons with detailed logging
+  - Helps diagnose timezone-related issues in release filtering
+  - Provides clear error messages with type information
+
+#### Documentation
+- **CLAUDE.md**: Added comprehensive Lead Time calculation documentation
+  - Two-method approach (Jira-based vs time-based)
+  - Release workflow support (cherry-pick explanation)
+  - DORA performance level thresholds
+- **RELEASE_NOTES.md**: This entry with all recent changes
+- **docs/DATA_QUALITY.md**: Updated team member validation to reflect assignee-only filtering
+
 ### Project Restructuring & Documentation
 
 #### Changed

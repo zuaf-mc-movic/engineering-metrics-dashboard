@@ -20,14 +20,20 @@ Data is collected daily at 10:00 AM via automated scheduling (launchd on macOS),
 
 #### Pull Requests
 **Fields Collected**:
-- Metadata: `number`, `title`, `author`, `state`, `merged`
+- Metadata: `number`, `title`, `branch`, `author`, `state`, `merged`
 - Timestamps: `created_at`, `merged_at`, `closed_at`
 - Metrics: `additions`, `deletions`, `changed_files`, `comments`
 - Calculated: `cycle_time_hours`, `time_to_first_review_hours`
 
+**Branch Name Collection** (Added Jan 2026):
+- Captures `headRefName` from GitHub API (e.g., `feature/RSC-123-add-feature`)
+- Used for issue key extraction in lead time calculations
+- Fallback when PR title doesn't contain issue key
+- Supports cherry-pick workflows: feature → master → release branches
+
 **Used For**:
 - PR count, merge rate, cycle time metrics
-- Lead time for changes (DORA)
+- Lead time for changes (DORA) - via issue key extraction
 - Contributor activity analysis
 - Team velocity tracking
 
