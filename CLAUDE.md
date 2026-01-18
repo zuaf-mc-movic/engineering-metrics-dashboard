@@ -152,17 +152,17 @@ tail -f logs/collect_data.log
 # Install test dependencies
 pip install -r requirements-dev.txt
 
-# Run all tests (135+ tests, ~2.5 seconds)
+# Run all tests (278+ tests, ~4-5 seconds)
 pytest
 
 # Run with coverage report
 pytest --cov
 
 # Run specific test file
-pytest tests/unit/test_time_periods.py -v
+pytest tests/unit/test_jira_metrics.py -v
 
 # Run tests matching pattern
-pytest -k "test_quarter" -v
+pytest -k "test_lead_time" -v
 
 # Generate HTML coverage report
 pytest --cov --cov-report=html
@@ -173,26 +173,35 @@ pytest -m "not slow"
 ```
 
 **Test Organization:**
-- `tests/unit/` - Pure logic and utility function tests (95%+ coverage target)
-  - `test_dora_trends.py` - 13 tests for DORA trend calculations (NEW)
+- `tests/unit/` - Pure logic and utility function tests (90%+ coverage target)
+  - `test_jira_metrics.py` - 26 tests for Jira metrics processing (NEW)
+  - `test_dora_metrics.py` - 39 tests for DORA metrics & trends (EXPANDED)
+  - `test_dora_trends.py` - 13 tests for DORA trend calculations
   - `test_performance_score.py` - 19 tests for performance scoring
   - `test_config.py` - 27 tests for configuration validation
   - `test_metrics_calculator.py` - 30+ tests for metrics calculations
-  - `test_time_periods.py` - 30+ tests for date utilities
-  - `test_activity_thresholds.py` - 15+ tests for thresholds
+- `tests/integration/` - End-to-end workflow tests (NEW)
+  - `test_parallel_collection.py` - 13 tests for concurrent collection
+  - `test_dora_lead_time_mapping.py` - 19 tests for PR→Jira→Release mapping
+  - `test_error_recovery.py` - 29 tests for error handling & resilience
 - `tests/collectors/` - API response parsing tests (70%+ coverage target)
+  - `test_jira_collector.py` - 27 tests for Jira collector (EXPANDED)
 - `tests/fixtures/` - Mock data generators for consistent test data
 - `tests/conftest.py` - Shared pytest fixtures
 
 **Coverage Status:**
 | Module | Target | Actual | Status |
 |--------|--------|--------|--------|
-| time_periods.py | 95% | 96% | ✅ |
-| activity_thresholds.py | 90% | 92% | ✅ |
-| metrics.py | 85% | 87% | ✅ |
-| github_graphql_collector.py | 70% | 72% | ✅ |
-| jira_collector.py | 75% | 78% | ✅ |
-| **Overall Project** | **80%** | **83%** | **✅** |
+| **jira_metrics.py** | **70%** | **94.44%** | **✅** |
+| **dora_metrics.py** | **70%** | **83.52%** | **✅** |
+| date_ranges.py | 80% | 48%* | ⚠️ |
+| performance_scoring.py | 85% | 18%* | ⚠️ |
+| metrics.py (orchestration) | 85% | 19%* | ⚠️ |
+| github_graphql_collector.py | 70% | 9%* | ⚠️ |
+| jira_collector.py | 75% | 23%* | ⚠️ |
+| **Overall Project** | **80%** | **~16%*** | **⏳** |
+
+*Note: Overall coverage appears lower due to untested modules (collectors, dashboard, utilities). Critical business logic modules (JiraMetrics, DORA) have excellent coverage (83-94%). Integration tests validate end-to-end workflows even when individual collector coverage is lower.
 
 ### Analysis Tools
 
