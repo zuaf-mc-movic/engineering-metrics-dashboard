@@ -112,29 +112,37 @@ def load_cache_from_file(range_key: str = "90d") -> bool:
         dashboard_logger.warning(f"Invalid range parameter: {e}")
         return False
 
-    # Build path using validated filename only (break taint chain for CodeQL)
+    # Build safe path - CodeQL taint analysis fix
+    # Instead of using user input directly, we reconstruct the path from safe components
     data_dir = Path(__file__).parent.parent.parent / "data"
+
+    # Verify the filename contains only the validated safe name (no path components)
+    if "/" in cache_filename or "\\" in cache_filename or ".." in cache_filename:
+        dashboard_logger.warning(f"Invalid cache filename: {cache_filename}")
+        return False
+
+    # Build path using only the filename component (satisfies CodeQL)
     cache_file = data_dir / cache_filename
 
-    # Additional safety check: verify resolved path is within data directory
+    # Verify resolved path is within data directory
     try:
-        cache_file_resolved = cache_file.resolve()
-        data_dir_resolved = data_dir.resolve()
+        cache_file_resolved = cache_file.resolve(strict=False)
+        data_dir_resolved = data_dir.resolve(strict=True)
 
-        # Check if cache_file is inside data_dir
-        if not str(cache_file_resolved).startswith(str(data_dir_resolved)):
+        # Use relative_to to check containment (more explicit than string startswith)
+        try:
+            cache_file_resolved.relative_to(data_dir_resolved)
+        except ValueError:
             dashboard_logger.warning(f"Path traversal detected: {cache_file_resolved}")
             return False
-
-        # Use the validated resolved path for file operations (satisfy CodeQL)
-        validated_path = cache_file_resolved
     except Exception as e:
         dashboard_logger.error(f"Path validation error: {e}")
         return False
 
-    if validated_path.exists():
+    # Use the validated path
+    if cache_file_resolved.exists():
         try:
-            with open(validated_path, "rb") as f:
+            with open(str(cache_file_resolved), "rb") as f:
                 cache_data = pickle.load(f)
                 # Handle both old format (cache_data['data']) and new format (direct structure)
                 if "data" in cache_data:
@@ -145,7 +153,7 @@ def load_cache_from_file(range_key: str = "90d") -> bool:
                 metrics_cache["timestamp"] = cache_data.get("timestamp")
                 metrics_cache["range_key"] = range_key
                 metrics_cache["date_range"] = cache_data.get("date_range", {})
-                dashboard_logger.info(f"Loaded cached metrics from {validated_path}")
+                dashboard_logger.info(f"Loaded cached metrics from {cache_file_resolved}")
                 dashboard_logger.info(f"Cache timestamp: {metrics_cache['timestamp']}")
                 if metrics_cache["date_range"]:
                     dashboard_logger.info(f"Date range: {metrics_cache['date_range'].get('description')}")
