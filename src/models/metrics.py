@@ -267,6 +267,7 @@ class MetricsCalculator(DORAMetrics, JiraMetrics):
         team_config: Dict,
         jira_filter_results: Optional[Dict] = None,
         issue_to_version_map: Optional[Dict] = None,
+        dora_config: Optional[Dict] = None,
     ) -> Dict:
         """Calculate team-level metrics
 
@@ -275,10 +276,14 @@ class MetricsCalculator(DORAMetrics, JiraMetrics):
             team_config: Team configuration with members
             jira_filter_results: Results from Jira filter collection
             issue_to_version_map: Optional dict mapping issue keys to fix versions (for Jira-based DORA tracking)
+            dora_config: Optional DORA metrics configuration (max_lead_time_days, cfr_correlation_window_hours)
 
         Returns:
             Dictionary with team metrics
         """
+        # Default DORA config if not provided
+        if dora_config is None:
+            dora_config = {"max_lead_time_days": 180, "cfr_correlation_window_hours": 24}
         # Extract GitHub members
         github_members = self._extract_github_members(team_config)
 
@@ -316,6 +321,8 @@ class MetricsCalculator(DORAMetrics, JiraMetrics):
         dora_metrics = dora_calculator.calculate_dora_metrics(
             issue_to_version_map=issue_to_version_map,  # Pass through for lead time calculation
             incidents_df=incidents_df,  # Pass incidents for CFR & MTTR
+            max_lead_time_days=dora_config.get("max_lead_time_days", 180),
+            cfr_correlation_window_hours=dora_config.get("cfr_correlation_window_hours", 24),
         )
 
         # Convert releases DataFrame to list of dicts for caching

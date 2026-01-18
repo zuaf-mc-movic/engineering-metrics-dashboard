@@ -447,11 +447,18 @@ def collect_single_team(
             jira_releases = team_jira_collector.collect_releases_from_fix_versions(project_keys=team_project_keys)
 
         # Build mapping: issue key → fix version name (for lead time calculation)
+        # If an issue has multiple Fix Versions, keep the earliest deployment
         issue_to_version_map = {}
         if jira_collector:
-            for release in jira_releases:
+            # First, sort releases by published_at date (earliest first)
+            sorted_releases = sorted(
+                jira_releases, key=lambda r: r.get("published_at", "9999-12-31")  # Put releases without dates last
+            )
+            for release in sorted_releases:
                 for issue_key in release.get("related_issues", []):
-                    issue_to_version_map[issue_key] = release["tag_name"]
+                    # Only add if not already mapped (earliest version wins)
+                    if issue_key not in issue_to_version_map:
+                        issue_to_version_map[issue_key] = release["tag_name"]
 
         # Convert to DataFrames for calculator
         team_dfs = {
@@ -468,6 +475,7 @@ def collect_single_team(
             team_config=team,
             jira_filter_results=jira_filter_results,
             issue_to_version_map=issue_to_version_map,
+            dora_config=config.dora_config,
         )
 
         # Build status string
@@ -508,220 +516,253 @@ parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase
 parser.add_argument("-q", "--quiet", action="store_true", help="Quiet mode (warnings and errors only)")
 parser.add_argument("--log-file", type=str, help="Override log file location")
 
-args = parser.parse_args()
+if __name__ == "__main__":
+    args = parser.parse_args()
 
-# Determine log level from CLI flags
-if args.quiet:
-    log_level = "WARNING"
-elif args.verbose >= 2:
-    log_level = "DEBUG"
-elif args.verbose == 1:
-    log_level = "INFO"
-else:
-    log_level = "INFO"
+    # Determine log level from CLI flags
+    if args.quiet:
+        log_level = "WARNING"
+    elif args.verbose >= 2:
+        log_level = "DEBUG"
+    elif args.verbose == 1:
+        log_level = "INFO"
+    else:
+        log_level = "INFO"
 
-# Setup logging
-setup_logging(log_level=log_level, log_file=args.log_file, config_file="config/logging.yaml")
-out = get_logger("team_metrics.collection")
+    # Setup logging
+    setup_logging(log_level=log_level, log_file=args.log_file, config_file="config/logging.yaml")
+    out = get_logger("team_metrics.collection")
 
-# Parse the date range
-try:
-    date_range = parse_date_range(args.date_range)
-except DateRangeError as e:
-    out.error(f"Error: {e}")
-    out.info("")
-    out.info("Valid formats:")
-    out.info("  - Days: 30d, 90d, 180d, 365d", indent=2)
-    out.info("  - Quarters: Q1-2025, Q2-2024", indent=2)
-    out.info("  - Years: 2024, 2025", indent=2)
-    out.info("  - Custom: 2024-01-01:2024-12-31", indent=2)
-    sys.exit(1)
-
-# Determine cache filename based on date range
-cache_filename = get_cache_filename(date_range.range_key)
-cache_file = os.path.join("data", cache_filename)
-
-out.section("Team Metrics Data Collection")
-
-# Check for resume opportunity
-failed_repos_prev = load_failed_repos_from_cache(cache_file)
-retry_mode = False
-
-if failed_repos_prev:
+    # Parse the date range
     try:
-        response = input("Retry failed repositories only? (y/n): ").strip().lower()
-        if response == "y":
-            retry_mode = True
-            out.info("Running in RETRY MODE - collecting previously failed repos", emoji="🔄")
-            out.info("Note: This will merge with existing cache data.")
-            out.info("")
-    except (EOFError, KeyboardInterrupt):
-        out.info("Continuing with full collection...")
-        retry_mode = False
+        date_range = parse_date_range(args.date_range)
+    except DateRangeError as e:
+        out.error(f"Error: {e}")
+        out.info("")
+        out.info("Valid formats:")
+        out.info("  - Days: 30d, 90d, 180d, 365d", indent=2)
+        out.info("  - Quarters: Q1-2025, Q2-2024", indent=2)
+        out.info("  - Years: 2024, 2025", indent=2)
+        out.info("  - Custom: 2024-01-01:2024-12-31", indent=2)
+        sys.exit(1)
 
-# Use parsed date range
-start_date = date_range.start_date
-end_date = date_range.end_date
-days_back = date_range.days
+    # Determine cache filename based on date range
+    cache_filename = get_cache_filename(date_range.range_key)
+    cache_file = os.path.join("data", cache_filename)
 
-out.info(f"Date Range: {date_range.description}", emoji="📅")
-out.info(f"   From: {start_date.strftime('%Y-%m-%d')}", indent=2)
-out.info(f"   To:   {end_date.strftime('%Y-%m-%d')}", indent=2)
-out.info(f"   Days: {days_back}", indent=2)
-out.info(f"   Cache: {cache_filename}", indent=2)
-out.info("")
+    out.section("Team Metrics Data Collection")
 
-config = Config()
+    # Check for resume opportunity
+    failed_repos_prev = load_failed_repos_from_cache(cache_file)
+    retry_mode = False
 
-# Check if teams are configured
-teams = config.teams
-
-if not teams:
-    out.warning("No teams configured. Using legacy collection mode...")
-    out.info("")
-
-    # Legacy collection (original behavior)
-    # Note: Legacy GitHubCollector (REST API) is deprecated - this path shouldn't execute
-    # Keeping for reference but may be removed in future versions
-    out.warning("WARNING: Using deprecated legacy collection path")
-    out.info("Please configure teams in config.yaml to use modern GraphQL collector", indent=2)
-    out.info("")
-
-    from src.collectors.github_collector import GitHubCollector
-
-    github_collector = GitHubCollector(
-        token=config.github_token,
-        repositories=config.github_repositories if config.github_repositories else None,
-        organization=config.github_organization,
-        teams=config.github_teams,
-        team_members=config.github_team_members,
-        days_back=days_back,
-    )
-
-    dataframes = github_collector.get_dataframes()
-
-    out.success("GitHub collection complete!")
-    out.info(f"- Pull Requests: {len(dataframes['pull_requests'])}", indent=2)
-    out.info(f"- Reviews: {len(dataframes['reviews'])}", indent=2)
-    out.info(f"- Commits: {len(dataframes['commits'])}", indent=2)
-    out.info("")
-
-    # Collect Jira metrics
-    jira_config = config.jira_config
-    if jira_config.get("server") and jira_config.get("project_keys"):
+    if failed_repos_prev:
         try:
-            out.info("Collecting Jira metrics...", emoji="📊")
-            jira_collector = JiraCollector(
-                server=jira_config["server"],
-                username=jira_config["username"],
-                api_token=jira_config["api_token"],
-                project_keys=jira_config["project_keys"],
-                team_members=config.jira_team_members,
-                days_back=days_back,
-                verify_ssl=False,
-                timeout=config.dashboard_config.get("jira_timeout_seconds", 120),
-            )
+            response = input("Retry failed repositories only? (y/n): ").strip().lower()
+            if response == "y":
+                retry_mode = True
+                out.info("Running in RETRY MODE - collecting previously failed repos", emoji="🔄")
+                out.info("Note: This will merge with existing cache data.")
+                out.info("")
+        except (EOFError, KeyboardInterrupt):
+            out.info("Continuing with full collection...")
+            retry_mode = False
 
-            jira_dataframes = jira_collector.get_dataframes()
-            dataframes["jira_issues"] = jira_dataframes["issues"]
-            dataframes["jira_worklogs"] = jira_dataframes["worklogs"]
+    # Use parsed date range
+    start_date = date_range.start_date
+    end_date = date_range.end_date
+    days_back = date_range.days
 
-            out.success("Jira collection complete!")
-            out.info(f"- Issues: {len(jira_dataframes['issues'])}", indent=2)
-            out.info("")
-        except Exception as e:
-            out.warning(f"Jira collection failed: {e}")
-            dataframes["jira_issues"] = pd.DataFrame()
-            dataframes["jira_worklogs"] = pd.DataFrame()
-    else:
-        dataframes["jira_issues"] = pd.DataFrame()
-        dataframes["jira_worklogs"] = pd.DataFrame()
-
-    # Calculate metrics
-    out.info("Calculating metrics...", emoji="🔢")
-    calculator = MetricsCalculator(dataframes)
-    metrics = calculator.get_all_metrics()
-
-    # Save to cache
-    cache_data = {"data": metrics, "timestamp": datetime.now()}
-
-else:
-    # New team-based collection
-    out.info(f"Collecting metrics for {len(teams)} team(s)...", emoji="📊")
+    out.info(f"Date Range: {date_range.description}", emoji="📅")
+    out.info(f"   From: {start_date.strftime('%Y-%m-%d')}", indent=2)
+    out.info(f"   To:   {end_date.strftime('%Y-%m-%d')}", indent=2)
+    out.info(f"   Days: {days_back}", indent=2)
+    out.info(f"   Cache: {cache_filename}", indent=2)
     out.info("")
 
-    # Initialize collectors
-    github_token = config.github_token
-    jira_config = config.jira_config
+    config = Config()
 
-    if not github_token:
-        out.error("Error: GitHub token not configured")
-        exit(1)
+    # Check if teams are configured
+    teams = config.teams
 
-    if not jira_config.get("server"):
-        out.warning("Warning: Jira not configured. Jira metrics will be skipped.")
-        jira_collector = None
-    else:
-        try:
-            jira_collector = JiraCollector(
-                server=jira_config["server"],
-                username=jira_config["username"],
-                api_token=jira_config["api_token"],
-                project_keys=jira_config.get("project_keys", []),
-                days_back=days_back,
-                verify_ssl=False,
-                timeout=config.dashboard_config.get("jira_timeout_seconds", 120),
-            )
-            out.success("Connected to Jira")
-        except Exception as e:
-            out.warning(f"Could not connect to Jira: {e}")
-            jira_collector = None
-
-    # Collect data for each team
-    team_metrics = {}
-    all_github_data = {"pull_requests": [], "reviews": [], "commits": [], "deployments": [], "releases": []}
-
-    # Get parallel collection config
-    parallel_cfg = config.parallel_config
-    use_parallel_teams = parallel_cfg.get("enabled", True) and len(teams) > 1
-    team_workers = min(len(teams), parallel_cfg.get("team_workers", 3))
-
-    if use_parallel_teams:
-        out.info(f"Using parallel team collection ({team_workers} workers)", emoji="⚡")
+    if not teams:
+        out.warning("No teams configured. Using legacy collection mode...")
         out.info("")
 
-        # Parallel team collection
-        with ThreadPoolExecutor(max_workers=team_workers) as executor:
-            # Submit all team collection jobs
-            futures = {
-                executor.submit(
-                    collect_single_team,
-                    team,
-                    config,
-                    github_token,
-                    jira_config,
-                    jira_collector,
-                    start_date,
-                    end_date,
-                    days_back,
-                ): team.get("name")
-                for team in teams
-            }
+        # Legacy collection (original behavior)
+        # Note: Legacy GitHubCollector (REST API) is deprecated - this path shouldn't execute
+        # Keeping for reference but may be removed in future versions
+        out.warning("WARNING: Using deprecated legacy collection path")
+        out.info("Please configure teams in config.yaml to use modern GraphQL collector", indent=2)
+        out.info("")
 
-            # Collect results as they complete
-            completed = 0
-            total = len(teams)
+        from src.collectors.github_collector import GitHubCollector
 
-            for future in as_completed(futures):
-                team_name = futures[future]
-                completed += 1
+        github_collector = GitHubCollector(
+            token=config.github_token,
+            repositories=config.github_repositories if config.github_repositories else None,
+            organization=config.github_organization,
+            teams=config.github_teams,
+            team_members=config.github_team_members,
+            days_back=days_back,
+        )
+
+        dataframes = github_collector.get_dataframes()
+
+        out.success("GitHub collection complete!")
+        out.info(f"- Pull Requests: {len(dataframes['pull_requests'])}", indent=2)
+        out.info(f"- Reviews: {len(dataframes['reviews'])}", indent=2)
+        out.info(f"- Commits: {len(dataframes['commits'])}", indent=2)
+        out.info("")
+
+        # Collect Jira metrics
+        jira_config = config.jira_config
+        if jira_config.get("server") and jira_config.get("project_keys"):
+            try:
+                out.info("Collecting Jira metrics...", emoji="📊")
+                jira_collector = JiraCollector(
+                    server=jira_config["server"],
+                    username=jira_config["username"],
+                    api_token=jira_config["api_token"],
+                    project_keys=jira_config["project_keys"],
+                    team_members=config.jira_team_members,
+                    days_back=days_back,
+                    verify_ssl=False,
+                    timeout=config.dashboard_config.get("jira_timeout_seconds", 120),
+                )
+
+                jira_dataframes = jira_collector.get_dataframes()
+                dataframes["jira_issues"] = jira_dataframes["issues"]
+                dataframes["jira_worklogs"] = jira_dataframes["worklogs"]
+
+                out.success("Jira collection complete!")
+                out.info(f"- Issues: {len(jira_dataframes['issues'])}", indent=2)
+                out.info("")
+            except Exception as e:
+                out.warning(f"Jira collection failed: {e}")
+                dataframes["jira_issues"] = pd.DataFrame()
+                dataframes["jira_worklogs"] = pd.DataFrame()
+        else:
+            dataframes["jira_issues"] = pd.DataFrame()
+            dataframes["jira_worklogs"] = pd.DataFrame()
+
+        # Calculate metrics
+        out.info("Calculating metrics...", emoji="🔢")
+        calculator = MetricsCalculator(dataframes)
+        metrics = calculator.get_all_metrics()
+
+        # Save to cache
+        cache_data = {"data": metrics, "timestamp": datetime.now()}
+
+    else:
+        # New team-based collection
+        out.info(f"Collecting metrics for {len(teams)} team(s)...", emoji="📊")
+        out.info("")
+
+        # Initialize collectors
+        github_token = config.github_token
+        jira_config = config.jira_config
+
+        if not github_token:
+            out.error("Error: GitHub token not configured")
+            exit(1)
+
+        if not jira_config.get("server"):
+            out.warning("Warning: Jira not configured. Jira metrics will be skipped.")
+            jira_collector = None
+        else:
+            try:
+                jira_collector = JiraCollector(
+                    server=jira_config["server"],
+                    username=jira_config["username"],
+                    api_token=jira_config["api_token"],
+                    project_keys=jira_config.get("project_keys", []),
+                    days_back=days_back,
+                    verify_ssl=False,
+                    timeout=config.dashboard_config.get("jira_timeout_seconds", 120),
+                )
+                out.success("Connected to Jira")
+            except Exception as e:
+                out.warning(f"Could not connect to Jira: {e}")
+                jira_collector = None
+
+        # Collect data for each team
+        team_metrics = {}
+        all_github_data = {"pull_requests": [], "reviews": [], "commits": [], "deployments": [], "releases": []}
+
+        # Get parallel collection config
+        parallel_cfg = config.parallel_config
+        use_parallel_teams = parallel_cfg.get("enabled", True) and len(teams) > 1
+        team_workers = min(len(teams), parallel_cfg.get("team_workers", 3))
+
+        if use_parallel_teams:
+            out.info(f"Using parallel team collection ({team_workers} workers)", emoji="⚡")
+            out.info("")
+
+            # Parallel team collection
+            with ThreadPoolExecutor(max_workers=team_workers) as executor:
+                # Submit all team collection jobs
+                futures = {
+                    executor.submit(
+                        collect_single_team,
+                        team,
+                        config,
+                        github_token,
+                        jira_config,
+                        jira_collector,
+                        start_date,
+                        end_date,
+                        days_back,
+                    ): team.get("name")
+                    for team in teams
+                }
+
+                # Collect results as they complete
+                completed = 0
+                total = len(teams)
+
+                for future in as_completed(futures):
+                    team_name = futures[future]
+                    completed += 1
+
+                    try:
+                        result_team_name, metrics, github_data, error, status = future.result()
+
+                        if error:
+                            print_progress(completed, total, f"✗ {team_name} - Error occurred")
+                            out.info(f"Error details: {error}", indent=2)
+                        else:
+                            team_metrics[team_name] = metrics
+
+                            # Add to combined dataset
+                            all_github_data["pull_requests"].extend(github_data["pull_requests"])
+                            all_github_data["reviews"].extend(github_data["reviews"])
+                            all_github_data["commits"].extend(github_data["commits"])
+                            all_github_data["deployments"].extend(github_data["deployments"])
+
+                            print_progress(completed, total, f"✓ {team_name} - {status}")
+
+                    except Exception as e:
+                        print_progress(completed, total, f"✗ {team_name} - {e}")
+
+        else:
+            # Sequential team collection (fallback or single team)
+            out.info("Sequential team collection mode")
+            out.info("")
+
+            for team in teams:
+                team_name = team.get("name")
+                team_display = team.get("display_name", team_name)
+
+                out.section(f"Team: {team_display}")
 
                 try:
-                    result_team_name, metrics, github_data, error, status = future.result()
+                    result_team_name, metrics, github_data, error, status = collect_single_team(
+                        team, config, github_token, jira_config, jira_collector, start_date, end_date, days_back
+                    )
 
                     if error:
-                        print_progress(completed, total, f"✗ {team_name} - Error occurred")
-                        out.info(f"Error details: {error}", indent=2)
+                        out.error(f"Error: {error}")
                     else:
                         team_metrics[team_name] = metrics
 
@@ -731,245 +772,213 @@ else:
                         all_github_data["commits"].extend(github_data["commits"])
                         all_github_data["deployments"].extend(github_data["deployments"])
 
-                        print_progress(completed, total, f"✓ {team_name} - {status}")
+                        out.success(f"{team_display} metrics complete - {status}")
 
                 except Exception as e:
-                    print_progress(completed, total, f"✗ {team_name} - {e}")
+                    out.error(f"{team_display} failed: {e}")
 
-    else:
-        # Sequential team collection (fallback or single team)
-        out.info("Sequential team collection mode")
+        # Collect person-level metrics (same 90-day window as teams)
         out.info("")
+        out.section("Collecting Person-Level Metrics")
 
+        person_metrics = {}
+        # Use same date range as team collection (already calculated above)
+        # Person metrics are fixed to DAYS_BACK constant (currently 90 days)
+
+        all_members = set()
         for team in teams:
-            team_name = team.get("name")
-            team_display = team.get("display_name", team_name)
+            # Check for new format: members list with github/jira keys
+            if "members" in team and isinstance(team.get("members"), list):
+                for member in team["members"]:
+                    if isinstance(member, dict) and "github" in member:
+                        all_members.add(member["github"])
+                    elif isinstance(member, str):
+                        # Old format where members is a simple list
+                        all_members.add(member)
+            # Fall back to old format: github.members
+            else:
+                all_members.update(team.get("github", {}).get("members", []))
 
-            out.section(f"Team: {team_display}")
-
-            try:
-                result_team_name, metrics, github_data, error, status = collect_single_team(
-                    team, config, github_token, jira_config, jira_collector, start_date, end_date, days_back
-                )
-
-                if error:
-                    out.error(f"Error: {error}")
-                else:
-                    team_metrics[team_name] = metrics
-
-                    # Add to combined dataset
-                    all_github_data["pull_requests"].extend(github_data["pull_requests"])
-                    all_github_data["reviews"].extend(github_data["reviews"])
-                    all_github_data["commits"].extend(github_data["commits"])
-                    all_github_data["deployments"].extend(github_data["deployments"])
-
-                    out.success(f"{team_display} metrics complete - {status}")
-
-            except Exception as e:
-                out.error(f"{team_display} failed: {e}")
-
-    # Collect person-level metrics (same 90-day window as teams)
-    out.info("")
-    out.section("Collecting Person-Level Metrics")
-
-    person_metrics = {}
-    # Use same date range as team collection (already calculated above)
-    # Person metrics are fixed to DAYS_BACK constant (currently 90 days)
-
-    all_members = set()
-    for team in teams:
-        # Check for new format: members list with github/jira keys
-        if "members" in team and isinstance(team.get("members"), list):
-            for member in team["members"]:
-                if isinstance(member, dict) and "github" in member:
-                    all_members.add(member["github"])
-                elif isinstance(member, str):
-                    # Old format where members is a simple list
-                    all_members.add(member)
-        # Fall back to old format: github.members
-        else:
-            all_members.update(team.get("github", {}).get("members", []))
-
-    out.info(f"Collecting metrics for {len(all_members)} unique team members...")
-    out.info(f"Time period: {date_range.description} ({start_date.date()} to {end_date.date()})")
-    out.info("")
-
-    # Get parallel collection config
-    parallel_cfg = config.parallel_config
-    use_parallel = parallel_cfg.get("enabled", True) and len(all_members) > 1
-    person_workers = parallel_cfg.get("person_workers", 8)
-
-    if use_parallel:
-        out.info(f"Using parallel collection ({person_workers} workers)", emoji="⚡")
+        out.info(f"Collecting metrics for {len(all_members)} unique team members...")
+        out.info(f"Time period: {date_range.description} ({start_date.date()} to {end_date.date()})")
         out.info("")
 
-        # Parallel person collection
-        with ThreadPoolExecutor(max_workers=person_workers) as executor:
-            # Submit all person collection jobs
-            futures = {
-                executor.submit(
-                    collect_single_person,
-                    username,
-                    config,
-                    teams,
-                    github_token,
-                    jira_collector,
-                    start_date,
-                    end_date,
-                    days_back,
-                ): username
-                for username in all_members
-            }
+        # Get parallel collection config
+        parallel_cfg = config.parallel_config
+        use_parallel = parallel_cfg.get("enabled", True) and len(all_members) > 1
+        person_workers = parallel_cfg.get("person_workers", 8)
 
-            # Collect results as they complete
-            completed = 0
-            total = len(all_members)
+        if use_parallel:
+            out.info(f"Using parallel collection ({person_workers} workers)", emoji="⚡")
+            out.info("")
 
-            for future in as_completed(futures):
-                username = futures[future]
-                completed += 1
+            # Parallel person collection
+            with ThreadPoolExecutor(max_workers=person_workers) as executor:
+                # Submit all person collection jobs
+                futures = {
+                    executor.submit(
+                        collect_single_person,
+                        username,
+                        config,
+                        teams,
+                        github_token,
+                        jira_collector,
+                        start_date,
+                        end_date,
+                        days_back,
+                    ): username
+                    for username in all_members
+                }
 
+                # Collect results as they complete
+                completed = 0
+                total = len(all_members)
+
+                for future in as_completed(futures):
+                    username = futures[future]
+                    completed += 1
+
+                    try:
+                        result_username, metrics, error, status, jira_failed = future.result()
+
+                        if error:
+                            print_progress(completed, total, f"✗ {username} - {error}")
+                        else:
+                            person_metrics[username] = metrics
+                            # Determine status emoji
+                            if jira_failed:
+                                emoji = "⚠️"
+                            else:
+                                emoji = "✓"
+                            print_progress(completed, total, f"{emoji} {username} - {status}")
+
+                    except Exception as e:
+                        print_progress(completed, total, f"✗ {username} - {e}")
+        else:
+            # Sequential person collection (fallback or single person)
+            out.info("Sequential collection mode")
+            out.info("")
+
+            for username in all_members:
                 try:
-                    result_username, metrics, error, status, jira_failed = future.result()
+                    result_username, metrics, error, status, jira_failed = collect_single_person(
+                        username, config, teams, github_token, jira_collector, start_date, end_date, days_back
+                    )
 
                     if error:
-                        print_progress(completed, total, f"✗ {username} - {error}")
+                        out.error(f"{username} - {error}")
                     else:
                         person_metrics[username] = metrics
-                        # Determine status emoji
                         if jira_failed:
-                            emoji = "⚠️"
+                            out.warning(f"{username} - {status} (partial - Jira collection failed)")
                         else:
-                            emoji = "✓"
-                        print_progress(completed, total, f"{emoji} {username} - {status}")
-
+                            out.success(f"{username} - {status}")
                 except Exception as e:
-                    print_progress(completed, total, f"✗ {username} - {e}")
-    else:
-        # Sequential person collection (fallback or single person)
-        out.info("Sequential collection mode")
+                    out.error(f"{username} - {e}")
+
+        # Calculate team comparison
         out.info("")
+        out.info("Calculating team comparisons...", emoji="🔢")
 
-        for username in all_members:
-            try:
-                result_username, metrics, error, status, jira_failed = collect_single_person(
-                    username, config, teams, github_token, jira_collector, start_date, end_date, days_back
-                )
+        all_dfs = {
+            "pull_requests": pd.DataFrame(all_github_data["pull_requests"]),
+            "reviews": pd.DataFrame(all_github_data["reviews"]),
+            "commits": pd.DataFrame(all_github_data["commits"]),
+            "deployments": pd.DataFrame(all_github_data["deployments"]),
+        }
 
-                if error:
-                    out.error(f"{username} - {error}")
-                else:
-                    person_metrics[username] = metrics
-                    if jira_failed:
-                        out.warning(f"{username} - {status} (partial - Jira collection failed)")
-                    else:
-                        out.success(f"{username} - {status}")
-            except Exception as e:
-                out.error(f"{username} - {e}")
+        calculator_all = MetricsCalculator(all_dfs)
+        team_comparison = calculator_all.calculate_team_comparison(team_metrics)
 
-    # Calculate team comparison
-    out.info("")
-    out.info("Calculating team comparisons...", emoji="🔢")
+        # Build display name mapping
+        member_names = build_member_name_mapping(teams)
 
-    all_dfs = {
-        "pull_requests": pd.DataFrame(all_github_data["pull_requests"]),
-        "reviews": pd.DataFrame(all_github_data["reviews"]),
-        "commits": pd.DataFrame(all_github_data["commits"]),
-        "deployments": pd.DataFrame(all_github_data["deployments"]),
-    }
-
-    calculator_all = MetricsCalculator(all_dfs)
-    team_comparison = calculator_all.calculate_team_comparison(team_metrics)
-
-    # Build display name mapping
-    member_names = build_member_name_mapping(teams)
-
-    # Validate GitHub data before caching
-    out.info("")
-    out.section("Validating GitHub Collection")
-
-    all_members = []
-    for team in teams:
-        # Extract GitHub members from team config (supports both new and old formats)
-        if "members" in team and isinstance(team.get("members"), list):
-            # New format: unified members list
-            for member in team["members"]:
-                if isinstance(member, dict) and member.get("github"):
-                    all_members.append(member["github"])
-        else:
-            # Old format: separate arrays
-            github_members = team.get("github", {}).get("members", [])
-            all_members.extend(github_members)
-
-    is_valid, validation_warnings, should_cache = validate_github_collection(
-        all_github_data, all_members, {}  # Collection status not available with parallel collection
-    )
-
-    if validation_warnings:
+        # Validate GitHub data before caching
         out.info("")
-        for warning in validation_warnings:
-            if warning.startswith("CRITICAL"):
-                out.error(warning)
-            elif "dropped significantly" in warning or "Too many failures" in warning:
-                out.warning(warning)
+        out.section("Validating GitHub Collection")
+
+        all_members = []
+        for team in teams:
+            # Extract GitHub members from team config (supports both new and old formats)
+            if "members" in team and isinstance(team.get("members"), list):
+                # New format: unified members list
+                for member in team["members"]:
+                    if isinstance(member, dict) and member.get("github"):
+                        all_members.append(member["github"])
             else:
-                out.warning(warning)
-        out.info("")
+                # Old format: separate arrays
+                github_members = team.get("github", {}).get("members", [])
+                all_members.extend(github_members)
 
-    if not should_cache:
-        out.error("Data validation failed - NOT caching to prevent data loss!")
-        out.info("Previous cache remains intact.", indent=2)
-        out.info("")
-        out.info("Recommendations:")
-        out.info("1. Check GitHub API status: https://www.githubstatus.com/", indent=1)
-        out.info("2. Verify your GitHub token has correct permissions", indent=1)
-        out.info("3. Re-run collection after issues are resolved", indent=1)
-        out.info("")
-        exit(1)
+        is_valid, validation_warnings, should_cache = validate_github_collection(
+            all_github_data, all_members, {}  # Collection status not available with parallel collection
+        )
 
-    if not is_valid:
-        out.warning("Data validation warnings detected. Caching anyway, but review logs.")
-        out.info("")
+        if validation_warnings:
+            out.info("")
+            for warning in validation_warnings:
+                if warning.startswith("CRITICAL"):
+                    out.error(warning)
+                elif "dropped significantly" in warning or "Too many failures" in warning:
+                    out.warning(warning)
+                else:
+                    out.warning(warning)
+            out.info("")
 
-    # Backup current cache before overwriting
-    if os.path.exists(cache_file):
-        backup_file = f"{cache_file}.backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        shutil.copy(cache_file, backup_file)
-        out.info(f"Backed up previous cache to: {backup_file}", emoji="📦")
+        if not should_cache:
+            out.error("Data validation failed - NOT caching to prevent data loss!")
+            out.info("Previous cache remains intact.", indent=2)
+            out.info("")
+            out.info("Recommendations:")
+            out.info("1. Check GitHub API status: https://www.githubstatus.com/", indent=1)
+            out.info("2. Verify your GitHub token has correct permissions", indent=1)
+            out.info("3. Re-run collection after issues are resolved", indent=1)
+            out.info("")
+            exit(1)
 
-    # Package everything
-    cache_data = {
-        "teams": team_metrics,
-        "persons": person_metrics,
-        "comparison": team_comparison,
-        "member_names": member_names,  # GitHub username -> display name mapping
-        "timestamp": datetime.now(),
-        "date_range": {  # NEW: Store date range info
-            "range_key": date_range.range_key,
-            "description": date_range.description,
-            "start_date": start_date,
-            "end_date": end_date,
-            "days": days_back,
-        },
-        "collection_status": {
-            "github": {},  # Collection status not available with parallel collection
-            "validation_warnings": validation_warnings,
-        },
-    }
+        if not is_valid:
+            out.warning("Data validation warnings detected. Caching anyway, but review logs.")
+            out.info("")
 
-# Save to cache file
-os.makedirs("data", exist_ok=True)
+        # Backup current cache before overwriting
+        if os.path.exists(cache_file):
+            backup_file = f"{cache_file}.backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            shutil.copy(cache_file, backup_file)
+            out.info(f"Backed up previous cache to: {backup_file}", emoji="📦")
 
-with open(cache_file, "wb") as f:
-    pickle.dump(cache_data, f)
+        # Package everything
+        cache_data = {
+            "teams": team_metrics,
+            "persons": person_metrics,
+            "comparison": team_comparison,
+            "member_names": member_names,  # GitHub username -> display name mapping
+            "timestamp": datetime.now(),
+            "date_range": {  # NEW: Store date range info
+                "range_key": date_range.range_key,
+                "description": date_range.description,
+                "start_date": start_date,
+                "end_date": end_date,
+                "days": days_back,
+            },
+            "collection_status": {
+                "github": {},  # Collection status not available with parallel collection
+                "validation_warnings": validation_warnings,
+            },
+        }
 
-out.info("")
-out.success(f"Metrics saved to {cache_file}")
-out.info("")
-out.section("Collection Complete!")
-out.info("")
-out.info("Now start the dashboard:")
-out.info("python -m src.dashboard.app", indent=1)
-out.info("")
-out.info("Then open: http://localhost:5001")
-out.info("")
+    # Save to cache file
+    os.makedirs("data", exist_ok=True)
+
+    with open(cache_file, "wb") as f:
+        pickle.dump(cache_data, f)
+
+    out.info("")
+    out.success(f"Metrics saved to {cache_file}")
+    out.info("")
+    out.section("Collection Complete!")
+    out.info("")
+    out.info("Now start the dashboard:")
+    out.info("python -m src.dashboard.app", indent=1)
+    out.info("")
+    out.info("Then open: http://localhost:5001")
+    out.info("")

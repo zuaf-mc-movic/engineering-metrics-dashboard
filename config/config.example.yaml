@@ -157,6 +157,11 @@ activity_thresholds:
   trend_decline_threshold_percent: 20  # Flag if declined >20%
   below_average_threshold_percent: 70  # Flag if <70% of team average
 
+# DORA Metrics configurations
+dora_metrics:
+  max_lead_time_days: 180  # Filter out lead times > 180 days (likely data errors)
+  cfr_correlation_window_hours: 24  # Hours after deployment to correlate incidents
+
 # Dashboard settings
 dashboard:
   port: 5001

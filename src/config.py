@@ -201,3 +201,27 @@ class Config:
             "repo_workers": config_parallel.get("repo_workers", default_config["repo_workers"]),
             "filter_workers": config_parallel.get("filter_workers", default_config["filter_workers"]),
         }
+
+    @property
+    def dora_config(self):
+        """Get DORA metrics configuration
+
+        Returns:
+            dict: Configuration for DORA metrics with keys:
+                  - max_lead_time_days: int (default 180)
+                  - cfr_correlation_window_hours: int (default 24)
+        """
+        default_config = {
+            "max_lead_time_days": 180,
+            "cfr_correlation_window_hours": 24,
+        }
+
+        config_dora = self.config.get("dora_metrics", {})
+
+        # Merge with defaults
+        return {
+            "max_lead_time_days": config_dora.get("max_lead_time_days", default_config["max_lead_time_days"]),
+            "cfr_correlation_window_hours": config_dora.get(
+                "cfr_correlation_window_hours", default_config["cfr_correlation_window_hours"]
+            ),
+        }

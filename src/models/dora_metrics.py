@@ -32,6 +32,8 @@ class DORAMetrics:
         end_date: Optional[datetime] = None,
         incidents_df: Optional[pd.DataFrame] = None,
         issue_to_version_map: Optional[Dict] = None,
+        max_lead_time_days: int = 180,
+        cfr_correlation_window_hours: int = 24,
     ) -> Dict[str, Any]:
         """Calculate DORA (DevOps Research and Assessment) four key metrics.
 
@@ -40,6 +42,8 @@ class DORAMetrics:
             end_date: End of measurement period
             incidents_df: Optional DataFrame of production incidents from Jira
             issue_to_version_map: Optional dict mapping issue keys to fix versions (for Jira-based DORA tracking)
+            max_lead_time_days: Maximum lead time in days (outliers above this will be filtered)
+            cfr_correlation_window_hours: Hours after deployment to correlate incidents for CFR
 
         Returns:
             Dictionary with all four DORA metrics:
@@ -80,10 +84,13 @@ class DORAMetrics:
             start_date,
             end_date,
             issue_to_version_map=issue_to_version_map,  # Pass through for Jira version mapping
+            max_lead_time_days=max_lead_time_days,  # Filter outliers
         )
 
         # 3. CHANGE FAILURE RATE (requires incident data)
-        change_failure_rate = self._calculate_change_failure_rate(releases_df, incidents_df)
+        change_failure_rate = self._calculate_change_failure_rate(
+            releases_df, incidents_df, correlation_window_hours=cfr_correlation_window_hours
+        )
 
         # 4. MEAN TIME TO RESTORE (requires incident data)
         mttr = self._calculate_mttr(incidents_df)
@@ -177,6 +184,7 @@ class DORAMetrics:
         start_date: datetime,
         end_date: datetime,
         issue_to_version_map: Optional[Dict] = None,
+        max_lead_time_days: int = 180,
     ) -> Dict[str, Any]:
         """Calculate lead time for changes (PR merge to deployment).
 
@@ -186,6 +194,7 @@ class DORAMetrics:
             start_date: Start of measurement period
             end_date: End of measurement period
             issue_to_version_map: Optional dict mapping issue keys to fix versions (for Jira-based tracking)
+            max_lead_time_days: Maximum lead time in days (outliers above this will be filtered)
         """
         if releases_df.empty or prs_df.empty:
             return {
@@ -267,6 +276,32 @@ class DORAMetrics:
                 "level": "low",
                 "badge_class": "low",
                 "trend": {},
+            }
+
+        # Filter out outliers (lead times exceeding max threshold)
+        max_lead_time_hours = max_lead_time_days * 24
+        original_count = len(lead_times)
+        lead_times = [lt for lt in lead_times if lt <= max_lead_time_hours]
+        filtered_count = original_count - len(lead_times)
+
+        if filtered_count > 0:
+            self.out.info(
+                f"Filtered {filtered_count} lead time outliers (>{max_lead_time_days} days) "
+                f"from {original_count} total PRs",
+                indent=2,
+            )
+
+        if not lead_times:
+            return {
+                "median_hours": None,
+                "median_days": None,
+                "p95_hours": None,
+                "average_hours": None,
+                "sample_size": 0,
+                "level": "low",
+                "badge_class": "low",
+                "trend": {},
+                "note": f"All lead times exceeded {max_lead_time_days} days threshold",
             }
 
         median_hours = float(pd.Series(lead_times).median())
@@ -374,9 +409,15 @@ class DORAMetrics:
         return None
 
     def _calculate_change_failure_rate(
-        self, releases_df: pd.DataFrame, incidents_df: pd.DataFrame = None
+        self, releases_df: pd.DataFrame, incidents_df: pd.DataFrame = None, correlation_window_hours: int = 24
     ) -> Dict[str, Any]:
-        """Calculate change failure rate (% of deployments causing incidents)."""
+        """Calculate change failure rate (% of deployments causing incidents).
+
+        Args:
+            releases_df: DataFrame of releases
+            incidents_df: DataFrame of incidents (optional)
+            correlation_window_hours: Hours after deployment to correlate incidents
+        """
         if releases_df.empty:
             return {
                 "rate_percent": None,
@@ -405,24 +446,37 @@ class DORAMetrics:
                 "trend": {},
             }
 
-        # Without incident data, we can't calculate failure rate
-        if incidents_df is None or incidents_df.empty:
+        # Without incident data, check if it's truly missing or just zero incidents
+        if incidents_df is None:
+            # No incident data provided at all
             return {
                 "rate_percent": None,
                 "failed_deployments": None,
                 "total_deployments": total_deployments,
                 "level": "unknown",
                 "badge_class": "low",
-                "note": "Incident data not available",
+                "note": "Incident data not configured",
+                "trend": {},
+            }
+
+        if incidents_df.empty:
+            # Incident collection ran but found zero incidents - this is good!
+            return {
+                "rate_percent": 0.0,
+                "failed_deployments": 0,
+                "total_deployments": total_deployments,
+                "level": "elite",
+                "badge_class": "elite",
+                "note": "No incidents (Excellent!)",
+                "incidents_count": 0,
                 "trend": {},
             }
 
         # Correlate incidents to deployments
         # Method 1: Direct tag matching (if incident has related_deployment field)
-        # Method 2: Time-based correlation (incident created within 24h of deployment)
+        # Method 2: Time-based correlation (incident created within correlation_window_hours of deployment)
 
         deployments_with_incidents = set()
-        correlation_window_hours = 24
 
         # Ensure datetime columns
         if "published_at" in production_releases.columns:
@@ -504,7 +558,8 @@ class DORAMetrics:
 
     def _calculate_mttr(self, incidents_df: pd.DataFrame = None) -> Dict[str, Any]:
         """Calculate Mean Time to Restore (incident resolution time)."""
-        if incidents_df is None or incidents_df.empty:
+        if incidents_df is None:
+            # No incident data provided at all
             return {
                 "median_hours": None,
                 "median_days": None,
@@ -513,7 +568,21 @@ class DORAMetrics:
                 "sample_size": 0,
                 "level": "unknown",
                 "badge_class": "low",
-                "note": "Incident data not available",
+                "note": "Incident data not configured",
+                "trend": {},
+            }
+
+        if incidents_df.empty:
+            # Incident collection ran but found zero incidents - this is good!
+            return {
+                "median_hours": 0,
+                "median_days": 0,
+                "average_hours": 0,
+                "p95_hours": 0,
+                "sample_size": 0,
+                "level": "elite",
+                "badge_class": "elite",
+                "note": "No incidents to restore (Excellent!)",
                 "trend": {},
             }
 

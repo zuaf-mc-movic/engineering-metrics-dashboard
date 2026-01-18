@@ -517,39 +517,41 @@
             </p>
             <div id="wip-chart"></div>
             <script>
-                var data = [{
-                    x: Object.keys({{ team_data.jira.wip.age_distribution|tojson }}),
-                    y: Object.values({{ team_data.jira.wip.age_distribution|tojson }}),
-                    type: 'bar',
-                    marker: {color: '#3498db'}
-                }];
-                // Get theme-aware colors
-                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                const chartColors = {
-                    paper_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
-                    plot_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
-                    font_color: isDark ? '#e0e0e0' : '#2c3e50',
-                    grid_color: isDark ? '#444' : '#ecf0f1'
-                };
+                (function() {
+                    var data = [{
+                        x: Object.keys({{ team_data.jira.wip.age_distribution|tojson }}),
+                        y: Object.values({{ team_data.jira.wip.age_distribution|tojson }}),
+                        type: 'bar',
+                        marker: {color: '#3498db'}
+                    }];
+                    // Get theme-aware colors
+                    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    const chartColors = {
+                        paper_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
+                        plot_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
+                        font_color: isDark ? '#e0e0e0' : '#2c3e50',
+                        grid_color: isDark ? '#444' : '#ecf0f1'
+                    };
 
-                var layout = {
-                    title: 'Days in WIP Status',
-                    xaxis: {
-                        title: 'Age Range',
-                        gridcolor: chartColors.grid_color,
-                        color: chartColors.font_color
-                    },
-                    yaxis: {
-                        title: 'Number of Issues',
-                        gridcolor: chartColors.grid_color,
-                        color: chartColors.font_color
-                    },
-                    paper_bgcolor: chartColors.paper_bgcolor,
-                    plot_bgcolor: chartColors.plot_bgcolor,
-                    font: {color: chartColors.font_color},
-                    height: 300
-                };
-                Plotly.newPlot('wip-chart', data, layout);
+                    var layout = {
+                        title: 'Days in WIP Status',
+                        xaxis: {
+                            title: 'Age Range',
+                            gridcolor: chartColors.grid_color,
+                            color: chartColors.font_color
+                        },
+                        yaxis: {
+                            title: 'Number of Issues',
+                            gridcolor: chartColors.grid_color,
+                            color: chartColors.font_color
+                        },
+                        paper_bgcolor: chartColors.paper_bgcolor,
+                        plot_bgcolor: chartColors.plot_bgcolor,
+                        font: {color: chartColors.font_color},
+                        height: 300
+                    };
+                    Plotly.newPlot('wip-chart', data, layout);
+                })();
             </script>
         </div>
         {% endif %}
