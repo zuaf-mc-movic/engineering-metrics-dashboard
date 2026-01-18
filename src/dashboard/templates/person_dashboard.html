@@ -35,7 +35,7 @@
 {% if team_name %}
 <a href="/team/{{ team_name }}">{{ team_name }} Team</a>
 {% endif %}
-<a href="/person/{{ username }}">{{ display_name }}</a>
+<a href="/person/{{ username|e }}">{{ display_name }}</a>
 {% endblock %}
 
 {% block extra_js %}
@@ -46,10 +46,10 @@
 
 <!-- Export Buttons -->
 <div class="export-buttons">
-    <a href="/api/export/person/{{ username }}/csv" class="btn-export" download>
+    <a href="/api/export/person/{{ username|e }}/csv" class="btn-export" download>
         📊 Export CSV
     </a>
-    <a href="/api/export/person/{{ username }}/json" class="btn-export" download>
+    <a href="/api/export/person/{{ username|e }}/json" class="btn-export" download>
         📋 Export JSON
     </a>
 </div>

@@ -30,11 +30,11 @@
 {% endblock %}
 
 {% block team_menu_items %}
-<li><a href="/team/{{ team_name }}/compare">👥 Compare Members</a></li>
+<li><a href="/team/{{ team_name|e }}/compare">👥 Compare Members</a></li>
 {% endblock %}
 
 {% block breadcrumb_items %}
-<a href="/team/{{ team_name }}">{{ team_display_name }}</a>
+<a href="/team/{{ team_name|e }}">{{ team_display_name }}</a>
 {% endblock %}
 
 {% block main_content %}
@@ -42,10 +42,10 @@
 
 <!-- Export Buttons -->
 <div class="export-buttons">
-    <a href="/api/export/team/{{ team_name }}/csv" class="btn-export" download>
+    <a href="/api/export/team/{{ team_name|e }}/csv" class="btn-export" download>
         📊 Export CSV
     </a>
-    <a href="/api/export/team/{{ team_name }}/json" class="btn-export" download>
+    <a href="/api/export/team/{{ team_name|e }}/json" class="btn-export" download>
         📋 Export JSON
     </a>
 </div>

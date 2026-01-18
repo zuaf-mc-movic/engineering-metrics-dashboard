@@ -198,15 +198,37 @@ def get_preset_ranges() -> list:
 
 
 def get_cache_filename(range_key: str) -> str:
-    """Generate cache filename for a given range key
+    """Generate cache filename for a given range key with path traversal protection
 
     Args:
         range_key: Range identifier (e.g., "90d", "Q1-2025")
 
     Returns:
         Cache filename (e.g., "metrics_cache_90d.pkl")
+
+    Raises:
+        ValueError: If range_key contains invalid characters or patterns
     """
-    # Sanitize range_key for filesystem
+    # Security: Check for path traversal attempts
+    if ".." in range_key or "/" in range_key or "\\" in range_key:
+        raise ValueError(f"Invalid range_key: contains path traversal characters")
+
+    # Validate against allowed patterns
+    valid_patterns = [
+        r"^\d+d$",  # Days: 30d, 90d, etc.
+        r"^Q[1-4]-\d{4}$",  # Quarters: Q1-2025
+        r"^\d{4}$",  # Years: 2024
+        r"^custom_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$",  # Custom: custom_2024-01-01_2024-12-31
+    ]
+
+    if not any(re.match(pattern, range_key) for pattern in valid_patterns):
+        raise ValueError(f"Invalid range_key format: {range_key}")
+
+    # Additional safety: limit length
+    if len(range_key) > 50:
+        raise ValueError(f"range_key too long: {len(range_key)} chars")
+
+    # Sanitize for filesystem (belt and suspenders)
     safe_key = range_key.replace(":", "_").replace("/", "_")
     return f"metrics_cache_{safe_key}.pkl"
 

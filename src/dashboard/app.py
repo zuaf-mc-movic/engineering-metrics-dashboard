@@ -63,7 +63,14 @@ def format_time_ago(timestamp: Optional[datetime]) -> str:
     if not timestamp:
         return "Unknown"
 
-    now = datetime.now()
+    # Ensure both timestamps are timezone-aware for comparison
+    from datetime import timezone
+
+    now = datetime.now(timezone.utc)
+    # If timestamp is naive, assume UTC
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+
     delta = now - timestamp
 
     if delta.total_seconds() < 60:
@@ -98,8 +105,28 @@ def load_cache_from_file(range_key: str = "90d") -> bool:
     import pickle
     from pathlib import Path
 
-    cache_filename = get_cache_filename(range_key)
+    # Security: Validate range_key to prevent path traversal
+    try:
+        cache_filename = get_cache_filename(range_key)
+    except ValueError as e:
+        dashboard_logger.warning(f"Invalid range parameter: {e}")
+        return False
+
     cache_file = Path(__file__).parent.parent.parent / "data" / cache_filename
+
+    # Additional safety check: verify resolved path is within data directory
+    data_dir = Path(__file__).parent.parent.parent / "data"
+    try:
+        cache_file_resolved = cache_file.resolve()
+        data_dir_resolved = data_dir.resolve()
+
+        # Check if cache_file is inside data_dir
+        if not str(cache_file_resolved).startswith(str(data_dir_resolved)):
+            dashboard_logger.warning(f"Path traversal detected: {cache_file_resolved}")
+            return False
+    except Exception as e:
+        dashboard_logger.error(f"Path validation error: {e}")
+        return False
 
     if cache_file.exists():
         try:
@@ -139,34 +166,48 @@ def get_available_ranges() -> List[Tuple[str, str, bool]]:
 
     # Check preset ranges
     for range_spec, description in get_preset_ranges():
-        cache_file = data_dir / get_cache_filename(range_spec)
-        if cache_file.exists():
-            # Try to load date range info from cache
-            try:
-                with open(cache_file, "rb") as f:
-                    cache_data = pickle.load(f)
-                    if "date_range" in cache_data:
-                        description = cache_data["date_range"].get("description", description)
-            except:
-                pass
-            available.append((range_spec, description, True))
+        try:
+            cache_filename = get_cache_filename(range_spec)
+            cache_file = data_dir / cache_filename
+            if cache_file.exists():
+                # Try to load date range info from cache
+                try:
+                    with open(cache_file, "rb") as f:
+                        cache_data = pickle.load(f)
+                        if "date_range" in cache_data:
+                            description = cache_data["date_range"].get("description", description)
+                except:
+                    pass
+                available.append((range_spec, description, True))
+        except ValueError:
+            # Invalid range_spec, skip it
+            dashboard_logger.warning(f"Skipping invalid preset range: {range_spec}")
+            continue
 
     # Check for other cached files (quarters, years, custom)
     if data_dir.exists():
         for cache_file in data_dir.glob("metrics_cache_*.pkl"):
             range_key = cache_file.stem.replace("metrics_cache_", "")
             if range_key not in [r[0] for r in available]:
-                # Try to get description from cache
+                # Validate range_key before using it
                 try:
-                    with open(cache_file, "rb") as f:
-                        cache_data = pickle.load(f)
-                        if "date_range" in cache_data:
-                            description = cache_data["date_range"].get("description", range_key)
-                        else:
-                            description = range_key
-                        available.append((range_key, description, True))
-                except:
-                    available.append((range_key, range_key, True))
+                    # This will raise ValueError if invalid
+                    _ = get_cache_filename(range_key)
+                    # Try to get description from cache
+                    try:
+                        with open(cache_file, "rb") as f:
+                            cache_data = pickle.load(f)
+                            if "date_range" in cache_data:
+                                description = cache_data["date_range"].get("description", range_key)
+                            else:
+                                description = range_key
+                            available.append((range_key, description, True))
+                    except:
+                        available.append((range_key, range_key, True))
+                except ValueError:
+                    # Invalid range_key in filename, skip it
+                    dashboard_logger.warning(f"Skipping invalid cached range file: {cache_file.name}")
+                    continue
 
     return available
 
@@ -185,6 +226,53 @@ def get_display_name(username: str, member_names: Optional[Dict[str, str]] = Non
     if member_names and username in member_names:
         return member_names[username]
     return username
+
+
+def validate_identifier(value: str, name: str) -> str:
+    """Validate team name or username - only allow safe characters
+
+    Args:
+        value: The input value to validate
+        name: Name of the parameter (for error messages)
+
+    Returns:
+        The validated value
+
+    Raises:
+        ValueError: If value contains unsafe characters
+    """
+    import re
+
+    # Allow: letters, numbers, underscore, hyphen, space, dot
+    # This matches typical team names and usernames
+    if not re.match(r"^[a-zA-Z0-9_\- .]+$", value):
+        raise ValueError(f"Invalid {name}: contains unsafe characters")
+
+    # Additional length check
+    if len(value) > 100:
+        raise ValueError(f"Invalid {name}: too long")
+
+    return value
+
+
+def handle_api_error(e: Exception, context: str) -> tuple:
+    """Handle API errors with proper logging and generic user message
+
+    Args:
+        e: The exception that occurred
+        context: Description of what operation failed
+
+    Returns:
+        Tuple of (response, status_code)
+    """
+    import traceback
+
+    # Log full details server-side
+    dashboard_logger.error(f"{context} failed: {str(e)}")
+    dashboard_logger.error(traceback.format_exc())
+
+    # Return generic message to user
+    return jsonify({"error": "An error occurred while processing your request"}), 500
 
 
 def filter_github_data_by_date(raw_data: Dict, start_date: datetime, end_date: datetime) -> Dict:
@@ -475,7 +563,8 @@ def api_metrics() -> Union[Response, Tuple[Response, int]]:
         try:
             refresh_metrics()
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            dashboard_logger.error(f"Metrics refresh failed: {str(e)}")
+            return jsonify({"error": "Failed to refresh metrics"}), 500
 
     return jsonify(metrics_cache["data"])
 
@@ -487,7 +576,7 @@ def api_refresh() -> Union[Response, Tuple[Response, int]]:
         metrics = refresh_metrics()
         return jsonify({"status": "success", "metrics": metrics})
     except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
+        return handle_api_error(e, "Metrics refresh")
 
 
 @app.route("/api/reload-cache", methods=["POST"])
@@ -509,7 +598,7 @@ def api_reload_cache() -> Union[Response, Tuple[Response, int]]:
                 500,
             )
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return handle_api_error(e, "Cache reload")
 
 
 @app.route("/collect")
@@ -519,12 +608,20 @@ def collect() -> Any:
         refresh_metrics()
         return redirect("/")
     except Exception as e:
-        return render_template("error.html", error=str(e))
+        dashboard_logger.error(f"Collection failed: {str(e)}")
+        return render_template("error.html", error="An error occurred during collection")
 
 
 @app.route("/team/<team_name>")
 def team_dashboard(team_name: str) -> str:
     """Team-specific dashboard"""
+    # Security: Validate team_name to prevent XSS
+    try:
+        team_name = validate_identifier(team_name, "team name")
+    except ValueError as e:
+        dashboard_logger.warning(f"Invalid team name in URL: {e}")
+        return render_template("error.html", error="Invalid team name"), 400
+
     config = get_config()
 
     # Get requested date range from query parameter (default: 90d)
@@ -612,6 +709,13 @@ def team_dashboard(team_name: str) -> str:
 @app.route("/person/<username>")
 def person_dashboard(username: str) -> str:
     """Person-specific dashboard"""
+    # Security: Validate username to prevent XSS
+    try:
+        username = validate_identifier(username, "username")
+    except ValueError as e:
+        dashboard_logger.warning(f"Invalid username in URL: {e}")
+        return render_template("error.html", error="Invalid username"), 400
+
     config = get_config()
 
     # Get requested date range from query parameter (default: 90d)
@@ -686,6 +790,13 @@ def person_dashboard(username: str) -> str:
 @app.route("/team/<team_name>/compare")
 def team_members_comparison(team_name: str) -> str:
     """Compare all team members side-by-side"""
+    # Security: Validate team_name to prevent XSS
+    try:
+        team_name = validate_identifier(team_name, "team name")
+    except ValueError as e:
+        dashboard_logger.warning(f"Invalid team name in URL: {e}")
+        return render_template("error.html", error="Invalid team name"), 400
+
     config = get_config()
 
     # Get requested date range from query parameter (default: 90d)
@@ -978,7 +1089,8 @@ def save_settings() -> Union[Response, Tuple[Response, int]]:
         return jsonify({"success": True, "message": "Settings saved successfully"})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        dashboard_logger.error(f"Settings save failed: {str(e)}")
+        return jsonify({"success": False, "error": "Failed to save settings"}), 500
 
 
 @app.route("/settings/reset", methods=["POST"])
@@ -1000,7 +1112,8 @@ def reset_settings() -> Union[Response, Tuple[Response, int]]:
         return jsonify({"success": True, "message": "Settings reset to defaults"})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        dashboard_logger.error(f"Settings reset failed: {str(e)}")
+        return jsonify({"success": False, "error": "Failed to reset settings"}), 500
 
 
 # ============================================================================
@@ -1126,6 +1239,13 @@ def create_json_response(data: Any, filename: str) -> Response:
 @app.route("/api/export/team/<team_name>/csv")
 def export_team_csv(team_name: str) -> Response:
     """Export team metrics as CSV"""
+    # Security: Validate team_name to prevent XSS
+    try:
+        team_name = validate_identifier(team_name, "team name")
+    except ValueError:
+        dashboard_logger.warning(f"Invalid team name in export URL")
+        return make_response("Invalid team name", 400)
+
     try:
         data = metrics_cache.get("data")
         if not data:
@@ -1133,7 +1253,7 @@ def export_team_csv(team_name: str) -> Response:
 
         teams = data.get("teams", {})
         if team_name not in teams:
-            return make_response(f"Team '{team_name}' not found", 404)
+            return make_response("Team not found", 404)
 
         team_data = teams[team_name].copy()
 
@@ -1149,12 +1269,20 @@ def export_team_csv(team_name: str) -> Response:
         return create_csv_response(team_data, filename)
 
     except Exception as e:
-        return make_response(f"Error exporting data: {str(e)}", 500)
+        dashboard_logger.error(f"CSV export failed for team {team_name}: {str(e)}")
+        return make_response("Error exporting data", 500)
 
 
 @app.route("/api/export/team/<team_name>/json")
 def export_team_json(team_name: str) -> Response:
     """Export team metrics as JSON"""
+    # Security: Validate team_name to prevent XSS
+    try:
+        team_name = validate_identifier(team_name, "team name")
+    except ValueError:
+        dashboard_logger.warning(f"Invalid team name in export URL")
+        return make_response("Invalid team name", 400)
+
     try:
         data = metrics_cache.get("data")
         if not data:
@@ -1162,7 +1290,7 @@ def export_team_json(team_name: str) -> Response:
 
         teams = data.get("teams", {})
         if team_name not in teams:
-            return make_response(f"Team '{team_name}' not found", 404)
+            return make_response("Team not found", 404)
 
         team_data = teams[team_name].copy()
 
@@ -1178,12 +1306,20 @@ def export_team_json(team_name: str) -> Response:
         return create_json_response(export_data, filename)
 
     except Exception as e:
-        return make_response(f"Error exporting data: {str(e)}", 500)
+        dashboard_logger.error(f"JSON export failed for team {team_name}: {str(e)}")
+        return make_response("Error exporting data", 500)
 
 
 @app.route("/api/export/person/<username>/csv")
 def export_person_csv(username: str) -> Response:
     """Export person metrics as CSV"""
+    # Security: Validate username to prevent XSS
+    try:
+        username = validate_identifier(username, "username")
+    except ValueError:
+        dashboard_logger.warning(f"Invalid username in export URL")
+        return make_response("Invalid username", 400)
+
     try:
         data = metrics_cache.get("data")
         if not data:
@@ -1191,7 +1327,7 @@ def export_person_csv(username: str) -> Response:
 
         persons = data.get("persons", {})
         if username not in persons:
-            return make_response(f"Person '{username}' not found", 404)
+            return make_response("Person not found", 404)
 
         person_data = persons[username].copy()
 
@@ -1207,12 +1343,20 @@ def export_person_csv(username: str) -> Response:
         return create_csv_response(person_data, filename)
 
     except Exception as e:
-        return make_response(f"Error exporting data: {str(e)}", 500)
+        dashboard_logger.error(f"CSV export failed for person {username}: {str(e)}")
+        return make_response("Error exporting data", 500)
 
 
 @app.route("/api/export/person/<username>/json")
 def export_person_json(username: str) -> Response:
     """Export person metrics as JSON"""
+    # Security: Validate username to prevent XSS
+    try:
+        username = validate_identifier(username, "username")
+    except ValueError:
+        dashboard_logger.warning(f"Invalid username in export URL")
+        return make_response("Invalid username", 400)
+
     try:
         data = metrics_cache.get("data")
         if not data:
@@ -1220,7 +1364,7 @@ def export_person_json(username: str) -> Response:
 
         persons = data.get("persons", {})
         if username not in persons:
-            return make_response(f"Person '{username}' not found", 404)
+            return make_response("Person not found", 404)
 
         person_data = persons[username].copy()
 
@@ -1236,7 +1380,8 @@ def export_person_json(username: str) -> Response:
         return create_json_response(export_data, filename)
 
     except Exception as e:
-        return make_response(f"Error exporting data: {str(e)}", 500)
+        dashboard_logger.error(f"JSON export failed for person {username}: {str(e)}")
+        return make_response("Error exporting data", 500)
 
 
 @app.route("/api/export/comparison/csv")
@@ -1271,7 +1416,8 @@ def export_comparison_csv() -> Response:
         return create_csv_response(teams_data, filename)
 
     except Exception as e:
-        return make_response(f"Error exporting data: {str(e)}", 500)
+        dashboard_logger.error(f"CSV comparison export failed: {str(e)}")
+        return make_response("Error exporting data", 500)
 
 
 @app.route("/api/export/comparison/json")
@@ -1298,12 +1444,20 @@ def export_comparison_json() -> Response:
         return create_json_response(export_data, filename)
 
     except Exception as e:
-        return make_response(f"Error exporting data: {str(e)}", 500)
+        dashboard_logger.error(f"JSON comparison export failed: {str(e)}")
+        return make_response("Error exporting data", 500)
 
 
 @app.route("/api/export/team-members/<team_name>/csv")
 def export_team_members_csv(team_name: str) -> Response:
     """Export team member comparison as CSV"""
+    # Security: Validate team_name to prevent XSS
+    try:
+        team_name = validate_identifier(team_name, "team name")
+    except ValueError:
+        dashboard_logger.warning(f"Invalid team name in export URL")
+        return make_response("Invalid team name", 400)
+
     try:
         data = metrics_cache.get("data")
         if not data:
@@ -1311,7 +1465,7 @@ def export_team_members_csv(team_name: str) -> Response:
 
         teams = data.get("teams", {})
         if team_name not in teams:
-            return make_response(f"Team '{team_name}' not found", 404)
+            return make_response("Team not found", 404)
 
         team_data = teams[team_name]
         members_breakdown = team_data.get("members_breakdown", {})
@@ -1340,12 +1494,20 @@ def export_team_members_csv(team_name: str) -> Response:
         return create_csv_response(members_data, filename)
 
     except Exception as e:
-        return make_response(f"Error exporting data: {str(e)}", 500)
+        dashboard_logger.error(f"CSV member export failed for team {team_name}: {str(e)}")
+        return make_response("Error exporting data", 500)
 
 
 @app.route("/api/export/team-members/<team_name>/json")
 def export_team_members_json(team_name: str) -> Response:
     """Export team member comparison as JSON"""
+    # Security: Validate team_name to prevent XSS
+    try:
+        team_name = validate_identifier(team_name, "team name")
+    except ValueError:
+        dashboard_logger.warning(f"Invalid team name in export URL")
+        return make_response("Invalid team name", 400)
+
     try:
         data = metrics_cache.get("data")
         if not data:
@@ -1353,7 +1515,7 @@ def export_team_members_json(team_name: str) -> Response:
 
         teams = data.get("teams", {})
         if team_name not in teams:
-            return make_response(f"Team '{team_name}' not found", 404)
+            return make_response("Team not found", 404)
 
         team_data = teams[team_name]
         members_breakdown = team_data.get("members_breakdown", {})
@@ -1374,7 +1536,8 @@ def export_team_members_json(team_name: str) -> Response:
         return create_json_response(export_data, filename)
 
     except Exception as e:
-        return make_response(f"Error exporting data: {str(e)}", 500)
+        dashboard_logger.error(f"JSON member export failed for team {team_name}: {str(e)}")
+        return make_response("Error exporting data", 500)
 
 
 def main() -> None:

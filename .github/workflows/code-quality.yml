@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Security: Explicit permissions (principle of least privilege)
+permissions:
+  contents: read  # Read code
+  pull-requests: write  # Comment on PRs (if using review tools)
+  checks: write  # Write check results
+
 jobs:
   quality-checks:
     runs-on: ubuntu-latest
