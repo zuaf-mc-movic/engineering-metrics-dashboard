@@ -152,8 +152,8 @@ tail -f logs/collect_data.log
 # Install test dependencies
 pip install -r requirements-dev.txt
 
-# Run all tests (417 tests: 397 active, 20 in disabled integration tests)
-# Execution time: ~9 seconds
+# Run all tests (417 tests, all passing)
+# Execution time: ~5 seconds
 pytest
 
 # Run with coverage report
@@ -181,12 +181,8 @@ pytest -m "not slow"
   - `test_performance_score.py` - 19 tests for performance scoring
   - `test_config.py` - 27 tests for configuration validation
   - `test_metrics_calculator.py` - 30+ tests for metrics calculations
-- `tests/integration/` - End-to-end workflow tests (CURRENTLY DISABLED)
-  - `test_parallel_collection.py.disabled` - 13 tests for concurrent collection
-  - `test_dora_lead_time_mapping.py.disabled` - 19 tests for PR→Jira→Release mapping
-  - `test_error_recovery.py.disabled` - 29 tests for error handling & resilience
-  - `test_collection_workflow.py.disabled` - Collection workflow tests
-  - Note: Integration tests temporarily disabled pending refactor
+- `tests/integration/` - End-to-end workflow tests
+  - `test_dora_lead_time_mapping.py` - 19 tests for PR→Jira→Release mapping (all passing)
 - `tests/collectors/` - API response parsing tests (70%+ coverage target)
   - `test_jira_collector.py` - 27 tests for Jira collector (EXPANDED)
 - `tests/fixtures/` - Mock data generators for consistent test data
@@ -202,9 +198,9 @@ pytest -m "not slow"
 | metrics.py (orchestration) | 85% | 32.18% | ⚠️ |
 | github_graphql_collector.py | 70% | 17.06% | ⚠️ |
 | jira_collector.py | 75% | 19.17% | ⚠️ |
-| **Overall Project** | **80%** | **51.25%** | **⏳** |
+| **Overall Project** | **80%** | **52.96%** | **⏳** |
 
-*Note: Overall coverage (51%) reflects well-tested business logic modules (94-97% for jira_metrics, performance_scoring, date_ranges; 75% for dora_metrics) contrasted with lower-coverage data collectors (17-19%). Integration tests account for 20 currently failing tests that should be in .disabled files.
+*Note: Overall coverage (53%) reflects well-tested business logic modules (94-97% for jira_metrics, performance_scoring, date_ranges; 75% for dora_metrics) contrasted with lower-coverage data collectors (17-19%) and orchestration (32%). All 417 tests passing.
 
 ### Analysis Tools
 

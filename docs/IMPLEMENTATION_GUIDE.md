@@ -595,11 +595,8 @@ tests/
 │   └── test_metrics_calculator.py      # 30+ tests: PR/review/commit metrics
 ├── collectors/                         # API parsing tests (70%+ coverage target)
 │   └── test_jira_collector.py          # 27 tests: Jira collector
-├── integration/                        # Integration tests (currently disabled)
-│   ├── test_parallel_collection.py.disabled
-│   ├── test_dora_lead_time_mapping.py.disabled
-│   ├── test_error_recovery.py.disabled
-│   └── test_collection_workflow.py.disabled
+├── integration/                        # End-to-end workflow tests
+│   └── test_dora_lead_time_mapping.py  # 19 tests for PR→Jira→Release mapping
 ├── fixtures/
 │   └── sample_data.py                  # Mock data generators
 ├── conftest.py                         # Shared pytest fixtures
@@ -618,10 +615,10 @@ tests/
 
 ```bash
 # Run all tests
-pytest                          # 417 tests: 397 passing, 20 integration tests failing
+pytest                          # 417 tests, all passing
 
 # With coverage
-pytest --cov                    # 51.25% overall coverage
+pytest --cov                    # 52.96% overall coverage
 
 # Specific module coverage
 pytest --cov=src.utils.date_ranges --cov-report=term-missing
@@ -691,9 +688,9 @@ Functions for consistent test data:
 | metrics.py (orchestration) | 85% | 32.18% | ⚠️ |
 | github_graphql_collector.py | 70% | 17.06% | ⚠️ |
 | jira_collector.py | 75% | 19.17% | ⚠️ |
-| **Overall Project** | **80%** | **51.25%** | **⏳** |
+| **Overall Project** | **80%** | **52.96%** | **⏳** |
 
-*Note: Overall coverage reflects strong business logic testing (94-97% for utilities and metrics) with gaps in collectors (17-19%) and orchestration (32%).*
+*Note: Overall coverage (53%) reflects strong business logic testing (94-97% for utilities and metrics) with gaps in collectors (17-19%) and orchestration (32%). All 417 tests passing.*
 
 ### Adding New Tests
 

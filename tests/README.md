@@ -121,9 +121,9 @@ def test_template(app_context):
 | date_ranges.py | 80% | ✅ 96.39% |
 | **Dashboard** |  |  |
 | dashboard/app.py | 80% | 🟡 48.67% |
-| **Overall** | **80%** | **⚠️ 51.25%** |
+| **Overall** | **80%** | **⚠️ 52.96%** |
 
-*Note: Overall coverage (51%) is lower due to gaps in collectors (17-19%) and orchestration (32%). Core business logic modules excel: 94-97% for jira_metrics, performance_scoring, date_ranges; 75% for dora_metrics. Test suite: 417 tests (397 passing, 20 failing integration tests).
+*Note: Overall coverage (53%) is lower due to gaps in collectors (17-19%) and orchestration (32%). Core business logic modules excel: 94-97% for jira_metrics, performance_scoring, date_ranges; 75% for dora_metrics. Test suite: 417 tests, all passing.
 
 **Note:** Metrics module recently refactored into 4 focused modules. Test coverage needs to be updated for new module structure.
 

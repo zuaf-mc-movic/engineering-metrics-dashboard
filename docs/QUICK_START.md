@@ -327,11 +327,10 @@ pytest
 # tests/unit/test_config.py ........................... (27 tests)
 # tests/unit/test_metrics_calculator.py ........................ (30+ tests)
 # tests/collectors/test_jira_collector.py ........................... (27 tests)
-# tests/integration/test_dora_lead_time_mapping.py ............. (19 tests)
+# tests/integration/test_dora_lead_time_mapping.py ................... (19 tests)
 # ... more test files ...
 #
-# Note: 20 integration tests currently failing (should be in .disabled files)
-# =============== 397 passed, 20 failed, 21 warnings in 9.19s =================
+# ======================= 417 passed, 23 warnings in 4.71s =======================
 
 # Check test coverage
 pytest --cov

@@ -107,7 +107,7 @@ team_metrics/
 │   │           └── charts.js            # Shared chart utilities and CHART_COLORS
 │   ├── config.py                        # Configuration loader
 │   └── __init__.py
-├── tests/                               # Test suite (417 tests, 51.25% coverage)
+├── tests/                               # Test suite (417 tests passing, 52.96% coverage)
 │   ├── unit/
 │   │   ├── test_jira_metrics.py         # 26 tests for Jira metrics processing
 │   │   ├── test_dora_metrics.py         # 39 tests for DORA metrics & trends
@@ -117,11 +117,8 @@ team_metrics/
 │   │   └── test_metrics_calculator.py   # 30+ tests for metrics calculations
 │   ├── collectors/
 │   │   └── test_jira_collector.py       # 27 tests for Jira collector
-│   ├── integration/                     # Integration tests (currently disabled)
-│   │   ├── test_parallel_collection.py.disabled
-│   │   ├── test_dora_lead_time_mapping.py.disabled
-│   │   ├── test_error_recovery.py.disabled
-│   │   └── test_collection_workflow.py.disabled
+│   ├── integration/                     # End-to-end workflow tests
+│   │   ├── test_dora_lead_time_mapping.py  # 19 tests for PR→Jira→Release mapping
 │   ├── fixtures/
 │   │   └── sample_data.py               # Mock data generators for testing
 │   ├── conftest.py                      # Shared pytest fixtures
@@ -310,10 +307,10 @@ This makes it easy to maintain historical snapshots and organize your exports ch
 # Install test dependencies
 pip install -r requirements-dev.txt
 
-# Run test suite (417 tests: 397 passed, 20 integration tests currently disabled)
+# Run test suite (417 tests, all passing)
 pytest
 
-# Check coverage (51.25% overall, with 94% jira_metrics, 75% dora_metrics)
+# Check coverage (52.96% overall, with 94% jira_metrics, 75% dora_metrics)
 pytest --cov
 ```
 
