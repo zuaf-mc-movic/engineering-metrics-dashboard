@@ -370,7 +370,7 @@ class JiraCollector:
         """
         try:
             # Determine if time constraint needed
-            filters_needing_time_constraint = ["scope", "bugs"]
+            filters_needing_time_constraint = ["scope", "bugs", "completed"]
             add_time_constraint = filter_name in filters_needing_time_constraint
 
             # Collect issues
@@ -391,7 +391,7 @@ class JiraCollector:
 
         Args:
             filter_ids: Dictionary mapping filter names to filter IDs
-                       Example: {'completed_12weeks': 12345, 'wip': 12346}
+                       Example: {'completed': 12345, 'wip': 12346}
             parallel: Whether to use parallel collection (default: True)
             max_workers: Number of concurrent filter collections (default: 4)
 

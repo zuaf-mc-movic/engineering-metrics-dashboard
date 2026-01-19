@@ -37,7 +37,7 @@ def valid_config_dict():
                     {"name": "Jane Smith", "github": "janesmith", "jira": "jsmith"},
                 ],
                 "github": {"team_slug": "backend-team"},
-                "jira": {"filters": {"wip": 12345, "completed_12weeks": 12346, "bugs": 12347}},
+                "jira": {"filters": {"wip": 12345, "completed": 12346, "bugs": 12347}},
             }
         ],
         "dashboard": {"port": 5000, "debug": True, "cache_duration_minutes": 60},
@@ -219,7 +219,7 @@ class TestTeamConfig:
         filters = team["jira"]["filters"]
 
         assert "wip" in filters
-        assert "completed_12weeks" in filters
+        assert "completed" in filters
         assert "bugs" in filters
         assert filters["wip"] == 12345
 

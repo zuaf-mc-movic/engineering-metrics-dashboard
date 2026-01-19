@@ -88,7 +88,7 @@ def sample_team_config():
         "github": {"team_slug": "test-team", "members": ["alice", "bob", "charlie"]},
         "jira": {
             "members": ["alice.jira", "bob.jira", "charlie.jira"],
-            "filters": {"wip": 12345, "completed_12weeks": 12346, "bugs": 12347},
+            "filters": {"wip": 12345, "completed": 12346, "bugs": 12347},
         },
     }
 

@@ -27,7 +27,7 @@ class TestDashboardWorkflow:
                     "pr_metrics": {"total_prs": 10, "merged_prs": 8, "merge_rate": 0.8, "avg_cycle_time_hours": 24.0},
                     "review_metrics": {"total_reviews": 20, "unique_reviewers": 5},
                     "contributor_metrics": {"total_commits": 50, "unique_contributors": 3},
-                    "jira": {"wip": {"count": 5, "issues": []}, "completed_12weeks": {"count": 15, "issues": []}},
+                    "jira": {"wip": {"count": 5, "issues": []}, "completed": {"count": 15, "issues": []}},
                     "dora": {
                         "deployment_frequency": 1.5,
                         "lead_time": 48.0,

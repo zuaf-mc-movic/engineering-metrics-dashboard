@@ -78,7 +78,7 @@ class JiraMetrics:
             return jira_metrics
 
         # Throughput from completed items
-        completed_issues = jira_filter_results.get("completed_12weeks", [])
+        completed_issues = jira_filter_results.get("completed", [])
         if completed_issues:
             # Calculate throughput by week
             df_completed = pd.DataFrame(completed_issues)

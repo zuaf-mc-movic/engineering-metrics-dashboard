@@ -172,7 +172,7 @@ class TestProcessJiraMetrics:
             {"key": "PROJ-4", "resolved": (base_date + timedelta(days=8)).isoformat(), "type": "Task"},
         ]
 
-        filter_results = {"completed_12weeks": completed_issues}
+        filter_results = {"completed": completed_issues}
         dfs = {}
         calculator = MetricsCalculator(dfs)
 
@@ -194,7 +194,7 @@ class TestProcessJiraMetrics:
             {"key": "PROJ-4", "resolved": base_date.isoformat(), "type": "Task"},
         ]
 
-        filter_results = {"completed_12weeks": completed_issues}
+        filter_results = {"completed": completed_issues}
         dfs = {}
         calculator = MetricsCalculator(dfs)
 
@@ -211,7 +211,7 @@ class TestProcessJiraMetrics:
             {"key": "PROJ-2", "resolved": base_date.isoformat(), "type": "Bug"},
         ]
 
-        filter_results = {"completed_12weeks": completed_issues}
+        filter_results = {"completed": completed_issues}
         dfs = {}
         calculator = MetricsCalculator(dfs)
 
@@ -451,7 +451,7 @@ class TestProcessJiraMetrics:
         base_date = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
         filter_results = {
-            "completed_12weeks": [
+            "completed": [
                 {"key": "PROJ-1", "resolved": base_date.isoformat(), "type": "Story"},
             ],
             "wip": [

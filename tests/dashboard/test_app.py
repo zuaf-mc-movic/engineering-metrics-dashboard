@@ -35,7 +35,7 @@ def mock_cache_data():
                 "github": {"pr_count": 107, "review_count": 472, "commit_count": 519, "merge_rate": 0.85},
                 "jira": {
                     "wip": {"count": 81},
-                    "completed_12weeks": 57,
+                    "completed": 57,
                     "bugs_created": 20,
                     "bugs_resolved": 16,
                     "flagged_blocked": 5,
@@ -55,7 +55,7 @@ def mock_cache_data():
                 "display_name": "WebTC Team",
                 "timestamp": datetime.now(),
                 "github": {"pr_count": 69, "review_count": 268, "commit_count": 512},
-                "jira": {"wip": {"count": 44}, "completed_12weeks": 103},
+                "jira": {"wip": {"count": 44}, "completed": 103},
                 "members": [],
             },
         },
@@ -81,13 +81,13 @@ def mock_cache_data():
                 "score": 75.5,
                 "team_size": 5,
                 "github": {"pr_count": 107, "review_count": 472},
-                "jira": {"completed_12weeks": 57},
+                "jira": {"completed": 57},
             },
             "WebTC": {
                 "score": 68.2,
                 "team_size": 4,
                 "github": {"pr_count": 69, "review_count": 268},
-                "jira": {"completed_12weeks": 103},
+                "jira": {"completed": 103},
             },
         },
         "timestamp": datetime.now(),
@@ -185,7 +185,7 @@ class TestExportFunctionality:
         assert "team" in data
         assert "metadata" in data
         assert data["team"]["github"]["pr_count"] == 107
-        assert data["team"]["jira"]["completed_12weeks"] == 57
+        assert data["team"]["jira"]["completed"] == 57
 
     def test_export_team_not_found(self, client, mock_cache):
         """Test exporting non-existent team"""

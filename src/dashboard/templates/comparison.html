@@ -375,7 +375,7 @@
                     <tr>
                         <td><strong>Throughput (issues/week)</strong></td>
                         <td {% if comparison.Native.jira_throughput > comparison.WebTC.jira_throughput %}class="winner"{% endif %}>
-                            <a href="{{ jira_server }}/issues/?filter={{ team_configs['Native'].jira.filters.completed_12weeks }}"
+                            <a href="{{ jira_server }}/issues/?filter={{ team_configs['Native'].jira.filters.completed }}"
                                target="_blank"
                                class="jira-filter-link"
                                style="color: inherit;">
@@ -383,7 +383,7 @@
                             </a>
                         </td>
                         <td {% if comparison.WebTC.jira_throughput > comparison.Native.jira_throughput %}class="winner"{% endif %}>
-                            <a href="{{ jira_server }}/issues/?filter={{ team_configs['WebTC'].jira.filters.completed_12weeks }}"
+                            <a href="{{ jira_server }}/issues/?filter={{ team_configs['WebTC'].jira.filters.completed }}"
                                target="_blank"
                                class="jira-filter-link"
                                style="color: inherit;">

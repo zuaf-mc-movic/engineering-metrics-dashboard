@@ -388,8 +388,8 @@
             <div class="card">
                 <h2>
                     Throughput (12 weeks)
-                    {% if team_config and team_config.get('jira', {}).get('filters', {}).get('completed_12weeks') %}
-                    <a href="{{ jira_server }}/issues/?filter={{ team_config.jira.filters.completed_12weeks }}"
+                    {% if team_config and team_config.get('jira', {}).get('filters', {}).get('completed') %}
+                    <a href="{{ jira_server }}/issues/?filter={{ team_config.jira.filters.completed }}"
                        target="_blank"
                        class="jira-filter-link">
                         🔗 View Filter
