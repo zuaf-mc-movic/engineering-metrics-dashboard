@@ -38,7 +38,9 @@ def main():
     # Connect to Jira
     print(f"Connecting to Jira at {jira_config['server']}...")
     try:
-        jira_client = JIRA(server=jira_config["server"], basic_auth=(jira_config["email"], jira_config["api_token"]))
+        # Support both 'email' and 'username' keys for backwards compatibility
+        username = jira_config.get("email") or jira_config.get("username")
+        jira_client = JIRA(server=jira_config["server"], basic_auth=(username, jira_config["api_token"]))
         print("Connected successfully!\n")
     except Exception as e:
         print(f"Error connecting to Jira: {e}")
