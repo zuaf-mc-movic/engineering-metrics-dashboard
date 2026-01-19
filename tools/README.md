@@ -15,6 +15,22 @@ This directory contains scripts for analyzing, verifying, and troubleshooting th
   ```
 - **Output**: Release list, issue counts, DORA metrics (deployment frequency, lead time, CFR, MTTR)
 
+**`check_dora_data.py`**
+- **Purpose**: Diagnostic tool to inspect DORA metrics data in cache
+- **Usage**:
+  ```bash
+  python tools/check_dora_data.py
+  ```
+- **Output**: Detailed breakdown of DORA metrics from cached data
+
+**`check_lead_time_mapping.py`**
+- **Purpose**: Debug PR to Jira issue to release mapping for lead time calculation
+- **Usage**:
+  ```bash
+  python tools/check_lead_time_mapping.py
+  ```
+- **Output**: Mapping results showing how PRs connect to releases via Jira issues
+
 ### Collection Verification
 
 **`verify_collection.sh`**

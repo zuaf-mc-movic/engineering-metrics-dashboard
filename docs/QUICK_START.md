@@ -261,7 +261,7 @@ python collect_data.py
 ### Dashboard
 - `src/dashboard/app.py` - Dashboard logic and routes
 - `src/dashboard/templates/*.html` - Dashboard UI templates
-  - `dashboard.html` - Main overview
+  - `teams_overview.html` - Main overview
   - `team_dashboard.html` - Team view
   - `person_dashboard.html` - Person view
   - `comparison.html` - Team comparison
@@ -318,16 +318,20 @@ pytest
 
 # Expected output:
 # ============================= test session starts ==============================
-# collected 111 items
+# collected 417 items
 #
-# tests/unit/test_time_periods.py ................              [ 14%]
-# tests/unit/test_activity_thresholds.py ...........            [ 24%]
-# tests/unit/test_collect_data.py ..............                [ 36%]
-# tests/unit/test_metrics_calculator.py ........................ [ 58%]
-# tests/collectors/test_github_collector.py ..........          [ 67%]
-# tests/collectors/test_jira_collector.py ............          [ 78%]
+# tests/unit/test_jira_metrics.py ......................... (26 tests)
+# tests/unit/test_dora_metrics.py ............................... (39 tests)
+# tests/unit/test_dora_trends.py ............. (13 tests)
+# tests/unit/test_performance_score.py ................... (19 tests)
+# tests/unit/test_config.py ........................... (27 tests)
+# tests/unit/test_metrics_calculator.py ........................ (30+ tests)
+# tests/collectors/test_jira_collector.py ........................... (27 tests)
+# tests/integration/test_dora_lead_time_mapping.py ............. (19 tests)
+# ... more test files ...
 #
-# ============================== 111 passed in 2.35s ==============================
+# Note: 20 integration tests currently failing (should be in .disabled files)
+# =============== 397 passed, 20 failed, 21 warnings in 9.19s =================
 
 # Check test coverage
 pytest --cov

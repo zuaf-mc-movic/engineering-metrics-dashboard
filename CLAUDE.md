@@ -152,7 +152,8 @@ tail -f logs/collect_data.log
 # Install test dependencies
 pip install -r requirements-dev.txt
 
-# Run all tests (278+ tests, ~4-5 seconds)
+# Run all tests (417 tests: 397 active, 20 in disabled integration tests)
+# Execution time: ~9 seconds
 pytest
 
 # Run with coverage report
@@ -180,10 +181,12 @@ pytest -m "not slow"
   - `test_performance_score.py` - 19 tests for performance scoring
   - `test_config.py` - 27 tests for configuration validation
   - `test_metrics_calculator.py` - 30+ tests for metrics calculations
-- `tests/integration/` - End-to-end workflow tests (NEW)
-  - `test_parallel_collection.py` - 13 tests for concurrent collection
-  - `test_dora_lead_time_mapping.py` - 19 tests for PR→Jira→Release mapping
-  - `test_error_recovery.py` - 29 tests for error handling & resilience
+- `tests/integration/` - End-to-end workflow tests (CURRENTLY DISABLED)
+  - `test_parallel_collection.py.disabled` - 13 tests for concurrent collection
+  - `test_dora_lead_time_mapping.py.disabled` - 19 tests for PR→Jira→Release mapping
+  - `test_error_recovery.py.disabled` - 29 tests for error handling & resilience
+  - `test_collection_workflow.py.disabled` - Collection workflow tests
+  - Note: Integration tests temporarily disabled pending refactor
 - `tests/collectors/` - API response parsing tests (70%+ coverage target)
   - `test_jira_collector.py` - 27 tests for Jira collector (EXPANDED)
 - `tests/fixtures/` - Mock data generators for consistent test data
@@ -193,15 +196,15 @@ pytest -m "not slow"
 | Module | Target | Actual | Status |
 |--------|--------|--------|--------|
 | **jira_metrics.py** | **70%** | **94.44%** | **✅** |
-| **dora_metrics.py** | **70%** | **83.52%** | **✅** |
-| date_ranges.py | 80% | 48%* | ⚠️ |
-| performance_scoring.py | 85% | 18%* | ⚠️ |
-| metrics.py (orchestration) | 85% | 19%* | ⚠️ |
-| github_graphql_collector.py | 70% | 9%* | ⚠️ |
-| jira_collector.py | 75% | 23%* | ⚠️ |
-| **Overall Project** | **80%** | **~16%*** | **⏳** |
+| **dora_metrics.py** | **70%** | **75.08%** | **✅** |
+| date_ranges.py | 80% | 96.39% | ✅ |
+| performance_scoring.py | 85% | 97.37% | ✅ |
+| metrics.py (orchestration) | 85% | 32.18% | ⚠️ |
+| github_graphql_collector.py | 70% | 17.06% | ⚠️ |
+| jira_collector.py | 75% | 19.17% | ⚠️ |
+| **Overall Project** | **80%** | **51.25%** | **⏳** |
 
-*Note: Overall coverage appears lower due to untested modules (collectors, dashboard, utilities). Critical business logic modules (JiraMetrics, DORA) have excellent coverage (83-94%). Integration tests validate end-to-end workflows even when individual collector coverage is lower.
+*Note: Overall coverage (51%) reflects well-tested business logic modules (94-97% for jira_metrics, performance_scoring, date_ranges; 75% for dora_metrics) contrasted with lower-coverage data collectors (17-19%). Integration tests account for 20 currently failing tests that should be in .disabled files.
 
 ### Analysis Tools
 
@@ -286,7 +289,6 @@ python collect_data.py --log-file /path/to/log
 
 **Collectors** (`src/collectors/`):
 - `github_graphql_collector.py` - **Primary collector**, uses GraphQL API v4 for efficiency
-- `github_collector.py` - Legacy REST API collector (kept for reference)
 - `jira_collector.py` - Jira REST API with Bearer token authentication
 
 **Models** (`src/models/`):

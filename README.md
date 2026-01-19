@@ -76,7 +76,6 @@ team_metrics/
 ├── src/
 │   ├── collectors/
 │   │   ├── github_graphql_collector.py  # Primary GitHub data collector (GraphQL API v4)
-│   │   ├── github_collector.py          # Legacy REST API collector (reference)
 │   │   └── jira_collector.py            # Jira REST API collector with Bearer auth
 │   ├── models/
 │   │   ├── __init__.py                  # Package exports (backward compatibility)
@@ -85,8 +84,7 @@ team_metrics/
 │   │   ├── performance_scoring.py       # Performance scoring utilities (270 lines)
 │   │   └── jira_metrics.py              # Jira metrics processing (226 lines)
 │   ├── utils/
-│   │   ├── time_periods.py              # Date range and period utilities
-│   │   └── activity_thresholds.py       # Threshold calculations and alerts
+│   │   └── date_ranges.py               # Date range and period utilities
 │   ├── dashboard/
 │   │   ├── app.py                       # Flask application and routes
 │   │   ├── templates/
@@ -109,18 +107,21 @@ team_metrics/
 │   │           └── charts.js            # Shared chart utilities and CHART_COLORS
 │   ├── config.py                        # Configuration loader
 │   └── __init__.py
-├── tests/                               # Unit test suite (135+ tests, 83% coverage)
+├── tests/                               # Test suite (417 tests, 51.25% coverage)
 │   ├── unit/
-│   │   ├── test_time_periods.py         # 30+ tests for date utilities
-│   │   ├── test_activity_thresholds.py  # 15+ tests for thresholds
-│   │   ├── test_collect_data.py         # 14+ tests for data collection helpers
-│   │   ├── test_metrics_calculator.py   # 30+ tests for metrics calculations
+│   │   ├── test_jira_metrics.py         # 26 tests for Jira metrics processing
+│   │   ├── test_dora_metrics.py         # 39 tests for DORA metrics & trends
 │   │   ├── test_dora_trends.py          # 13 tests for DORA trend calculations
 │   │   ├── test_performance_score.py    # 19 tests for performance scoring
-│   │   └── test_config.py               # 27 tests for configuration validation
+│   │   ├── test_config.py               # 27 tests for configuration validation
+│   │   └── test_metrics_calculator.py   # 30+ tests for metrics calculations
 │   ├── collectors/
-│   │   ├── test_github_collector.py     # 10+ tests for GitHub GraphQL parsing
-│   │   └── test_jira_collector.py       # 12+ tests for Jira API parsing
+│   │   └── test_jira_collector.py       # 27 tests for Jira collector
+│   ├── integration/                     # Integration tests (currently disabled)
+│   │   ├── test_parallel_collection.py.disabled
+│   │   ├── test_dora_lead_time_mapping.py.disabled
+│   │   ├── test_error_recovery.py.disabled
+│   │   └── test_collection_workflow.py.disabled
 │   ├── fixtures/
 │   │   └── sample_data.py               # Mock data generators for testing
 │   ├── conftest.py                      # Shared pytest fixtures
@@ -309,10 +310,10 @@ This makes it easy to maintain historical snapshots and organize your exports ch
 # Install test dependencies
 pip install -r requirements-dev.txt
 
-# Run test suite (135+ tests, should complete in ~2.5 seconds)
+# Run test suite (417 tests: 397 passed, 20 integration tests currently disabled)
 pytest
 
-# Check coverage (should show 83%+ overall)
+# Check coverage (51.25% overall, with 94% jira_metrics, 75% dora_metrics)
 pytest --cov
 ```
 
@@ -602,13 +603,13 @@ Verify and analyze collected metrics:
 
 ```bash
 # Quick verification (checks for errors, counts releases, verifies issue mapping)
-./verify_collection.sh
+./tools/verify_collection.sh
 
 # Detailed analysis (shows releases, issue counts, DORA metrics)
-python analyze_releases.py
+python tools/analyze_releases.py
 
 # Specific release details
-python analyze_releases.py "Team Name" "Release Name"
+python tools/analyze_releases.py "Team Name" "Release Name"
 ```
 
 See `ANALYSIS_COMMANDS.md` for complete reference with Python snippets and verification checklist.

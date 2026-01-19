@@ -263,19 +263,9 @@ teams:
         scope: 22352
         wip: 22353
 
-time_periods:
-  last_n_days: [7, 14, 30, 60, 90]
-  quarters_enabled: true
-  custom_range_enabled: true
-  max_days_back: 365
-
-activity_thresholds:
-  minimum_values:
-    prs_per_month: 5
-    reviews_per_month: 10
-    commits_per_month: 20
-  trend_decline_threshold_percent: 20
-  below_average_threshold_percent: 70
+# Note: time_periods and activity_thresholds have been removed from configuration
+# Date ranges are now specified via --date-range parameter (e.g., 90d, Q1-2025, 2025)
+# Activity thresholds are calculated automatically during metrics collection
 
 dashboard:
   port: 5001
@@ -367,8 +357,8 @@ team_metrics/
 │   └── metrics_cache.pkl        # Cached metrics data
 ├── src/
 │   ├── collectors/
-│   │   ├── github_collector.py  # Enhanced with team methods
-│   │   └── jira_collector.py    # Enhanced with filter support
+│   │   ├── github_graphql_collector.py  # Primary GitHub collector (GraphQL API)
+│   │   └── jira_collector.py            # Enhanced with filter support
 │   ├── models/
 │   │   ├── __init__.py                  # Backward compatibility exports
 │   │   ├── metrics.py                   # Core MetricsCalculator (605 lines)
@@ -382,8 +372,7 @@ team_metrics/
 │   │       ├── person_dashboard.html
 │   │       └── comparison.html
 │   ├── utils/
-│   │   ├── time_periods.py      # Time period utilities
-│   │   ├── activity_thresholds.py
+│   │   ├── date_ranges.py       # Date range and period utilities
 │   │   └── jira_filters.py      # Filter discovery
 │   └── config.py                # Enhanced with team properties
 ├── collect_data.py              # Enhanced for multi-team collection
@@ -452,7 +441,7 @@ The system supports tracking who "needs to be pushed to do more" via:
 - Declining trend detection
 - Custom minimum thresholds
 
-This is implemented in `src/utils/activity_thresholds.py` but not yet integrated into the UI.
+Note: Activity thresholds are calculated during metrics collection but not yet integrated into the UI.
 
 ## Frontend Architecture
 
@@ -597,14 +586,20 @@ Potential improvements not yet implemented:
 
 ```
 tests/
-├── unit/                               # Pure logic tests (95%+ coverage target)
-│   ├── test_time_periods.py            # 30+ tests: quarters, periods, date parsing
-│   ├── test_activity_thresholds.py     # 15+ tests: averages, trends, flags
-│   ├── test_collect_data.py            # 14+ tests: username mapping, config parsing
+├── unit/                               # Pure logic tests (90%+ coverage target)
+│   ├── test_jira_metrics.py            # 26 tests: Jira metrics processing
+│   ├── test_dora_metrics.py            # 39 tests: DORA metrics & trends
+│   ├── test_dora_trends.py             # 13 tests: DORA trend calculations
+│   ├── test_performance_score.py       # 19 tests: performance scoring
+│   ├── test_config.py                  # 27 tests: configuration validation
 │   └── test_metrics_calculator.py      # 30+ tests: PR/review/commit metrics
 ├── collectors/                         # API parsing tests (70%+ coverage target)
-│   ├── test_github_collector.py        # 10+ tests: GraphQL response parsing
-│   └── test_jira_collector.py          # 12+ tests: status times, throughput, WIP
+│   └── test_jira_collector.py          # 27 tests: Jira collector
+├── integration/                        # Integration tests (currently disabled)
+│   ├── test_parallel_collection.py.disabled
+│   ├── test_dora_lead_time_mapping.py.disabled
+│   ├── test_error_recovery.py.disabled
+│   └── test_collection_workflow.py.disabled
 ├── fixtures/
 │   └── sample_data.py                  # Mock data generators
 ├── conftest.py                         # Shared pytest fixtures
@@ -623,20 +618,20 @@ tests/
 
 ```bash
 # Run all tests
-pytest                          # Output: 111 passed in ~2.5s
+pytest                          # 417 tests: 397 passing, 20 integration tests failing
 
 # With coverage
-pytest --cov                    # Overall: 83% coverage
+pytest --cov                    # 51.25% overall coverage
 
 # Specific module coverage
-pytest --cov=src.utils.time_periods --cov-report=term-missing
+pytest --cov=src.utils.date_ranges --cov-report=term-missing
 
 # HTML coverage report
 pytest --cov --cov-report=html
 open htmlcov/index.html
 
 # Run specific test file
-pytest tests/unit/test_time_periods.py -v
+pytest tests/unit/test_jira_metrics.py -v
 
 # Run tests matching pattern
 pytest -k "test_quarter" -v
@@ -689,12 +684,16 @@ Functions for consistent test data:
 
 | Module | Target | Actual | Status |
 |--------|--------|--------|--------|
-| time_periods.py | 95% | 96% | ✅ |
-| activity_thresholds.py | 90% | 92% | ✅ |
-| metrics.py | 85% | 87% | ✅ |
-| github_graphql_collector.py | 70% | 72% | ✅ |
-| jira_collector.py | 75% | 78% | ✅ |
-| **Overall Project** | **80%** | **83%** | **✅** |
+| jira_metrics.py | 70% | 94.44% | ✅ |
+| dora_metrics.py | 70% | 75.08% | ✅ |
+| date_ranges.py | 80% | 96.39% | ✅ |
+| performance_scoring.py | 85% | 97.37% | ✅ |
+| metrics.py (orchestration) | 85% | 32.18% | ⚠️ |
+| github_graphql_collector.py | 70% | 17.06% | ⚠️ |
+| jira_collector.py | 75% | 19.17% | ⚠️ |
+| **Overall Project** | **80%** | **51.25%** | **⏳** |
+
+*Note: Overall coverage reflects strong business logic testing (94-97% for utilities and metrics) with gaps in collectors (17-19%) and orchestration (32%).*
 
 ### Adding New Tests
 

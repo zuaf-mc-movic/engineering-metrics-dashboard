@@ -109,18 +109,21 @@ def test_template(app_context):
 
 | Module | Target | Status |
 |--------|--------|--------|
-| time_periods.py | 95% | ✅ 96% |
-| activity_thresholds.py | 90% | ✅ 92% |
-| github_graphql_collector.py | 70% | ✅ 72% |
-| jira_collector.py | 75% | ✅ 78% |
-| **Models (Refactored)** |  |  |
-| metrics.py | 85% | 🟡 33% (needs improvement) |
-| dora_metrics.py | 70% | 🟡 47% (needs improvement) |
-| performance_scoring.py | 95% | ✅ 97% |
-| jira_metrics.py | 70% | 🔴 6% (critical) |
+| **Core Business Logic** |  |  |
+| jira_metrics.py | 70% | ✅ 94.44% |
+| dora_metrics.py | 70% | ✅ 75.08% |
+| performance_scoring.py | 85% | ✅ 97.37% |
+| metrics.py (orchestration) | 85% | ⚠️ 32.18% (needs improvement) |
+| **Data Collectors** |  |  |
+| github_graphql_collector.py | 70% | ⚠️ 17.06% (critical gap) |
+| jira_collector.py | 75% | ⚠️ 19.17% (needs improvement) |
+| **Utilities** |  |  |
+| date_ranges.py | 80% | ✅ 96.39% |
 | **Dashboard** |  |  |
-| dashboard/app.py | 80% | 🆕 TBD |
-| **Overall** | **80%** | **✅ 83%** |
+| dashboard/app.py | 80% | 🟡 48.67% |
+| **Overall** | **80%** | **⚠️ 51.25%** |
+
+*Note: Overall coverage (51%) is lower due to gaps in collectors (17-19%) and orchestration (32%). Core business logic modules excel: 94-97% for jira_metrics, performance_scoring, date_ranges; 75% for dora_metrics. Test suite: 417 tests (397 passing, 20 failing integration tests).
 
 **Note:** Metrics module recently refactored into 4 focused modules. Test coverage needs to be updated for new module structure.
 
